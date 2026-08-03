@@ -1,0 +1,23 @@
+{
+  "name": "mutabaah-digital",
+  "short_name": "mutabaah",
+  "start_url": "hidayatullah.vercel.app",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d9488",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "hidayatullah.vercel.app/hidayatullah.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "hidayatullah.vercel.app/hidayatullah.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
