@@ -5,6 +5,7 @@
     <base target="_top">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mutaba'ah Digital</title>
+    <link rel="manifest" href="/manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -3297,6 +3298,16 @@
 
         // BUNDLED INITIALIZATION
         function initApp() {
+            if (typeof google === 'undefined' || !google.script) {
+                console.log("Running outside Google Apps Script (Vercel Mode)");
+                var settings = { name: "Hidayatullah Tarakan" };
+                localStorage.setItem('mutabaah_settings', JSON.stringify(settings));
+                renderSettings(settings);
+                var el = document.getElementById('appNameDisplayLogin');
+                if (el && (el.innerText === 'Memuat...' || el.innerText.includes('Memuat'))) el.innerText = "Hidayatullah Tarakan";
+                return;
+            }
+
             if (!curUser) {
                 // Background fetch settings only for login page
                 google.script.run.withSuccessHandler(function (res) {
@@ -10025,52 +10036,58 @@
                 return;
             }
 
-            try {
-                var customLogo = document.getElementById('customLogoImg');
-                var logoSrc = (customLogo && customLogo.src && customLogo.src.length > 20) ? customLogo.src : "https://cdn-icons-png.flaticon.com/512/3652/3652191.png";
-                var titleEl = document.getElementById('sidebarAppName');
-                var appTitle = (titleEl && titleEl.innerText) ? titleEl.innerText : "Mutaba'ah Digital Admin";
-
-                var manifestObj = {
-                    "name": appTitle,
-                    "short_name": "Mutaba'ah Admin",
-                    "start_url": window.location.href,
-                    "display": "standalone",
-                    "background_color": "#064e3b",
-                    "theme_color": "#064e3b",
-                    "description": "Sistem Monitoring & Admin Mutaba'ah Digital",
-                    "icons": [
-                        {
-                            "src": logoSrc,
-                            "sizes": "512x512",
-                            "type": "image/png",
-                            "purpose": "any maskable"
-                        }
-                    ]
-                };
-                var blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
-                var oldLink = document.querySelector('link[rel="manifest"]');
-                if (oldLink) document.head.removeChild(oldLink);
-                var link = document.createElement('link');
-                link.rel = 'manifest';
-                link.href = URL.createObjectURL(blob);
-                document.head.appendChild(link);
-            } catch (e) {
-                console.log("Error create manifest:", e);
-            }
-
-            if ('serviceWorker' in navigator) {
+            if (typeof google === 'undefined' || !google.script) {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(e) {});
+                }
+            } else {
                 try {
-                    var swCode = `
-                        self.addEventListener('install', function(e) { self.skipWaiting(); });
-                        self.addEventListener('activate', function(e) { e.waitUntil(self.clients.claim()); });
-                        self.addEventListener('fetch', function(e) {
-                            e.respondWith(fetch(e.request).catch(function() { return new Response('Offline Mode'); }));
-                        });
-                    `;
-                    var swBlob = new Blob([swCode], { type: 'application/javascript' });
-                    navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(function(e) {});
-                } catch(e) {}
+                    var customLogo = document.getElementById('customLogoImg');
+                    var logoSrc = (customLogo && customLogo.src && customLogo.src.length > 20) ? customLogo.src : "https://cdn-icons-png.flaticon.com/512/3652/3652191.png";
+                    var titleEl = document.getElementById('sidebarAppName');
+                    var appTitle = (titleEl && titleEl.innerText) ? titleEl.innerText : "Mutaba'ah Digital Admin";
+
+                    var manifestObj = {
+                        "name": appTitle,
+                        "short_name": "Mutaba'ah Admin",
+                        "start_url": window.location.href,
+                        "display": "standalone",
+                        "background_color": "#064e3b",
+                        "theme_color": "#064e3b",
+                        "description": "Sistem Monitoring & Admin Mutaba'ah Digital",
+                        "icons": [
+                            {
+                                "src": logoSrc,
+                                "sizes": "512x512",
+                                "type": "image/png",
+                                "purpose": "any maskable"
+                            }
+                        ]
+                    };
+                    var blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+                    var oldLink = document.querySelector('link[rel="manifest"]');
+                    if (oldLink) document.head.removeChild(oldLink);
+                    var link = document.createElement('link');
+                    link.rel = 'manifest';
+                    link.href = URL.createObjectURL(blob);
+                    document.head.appendChild(link);
+                } catch (e) {
+                    console.log("Error create manifest:", e);
+                }
+
+                if ('serviceWorker' in navigator) {
+                    try {
+                        var swCode = `
+                            self.addEventListener('install', function(e) { self.skipWaiting(); });
+                            self.addEventListener('activate', function(e) { e.waitUntil(self.clients.claim()); });
+                            self.addEventListener('fetch', function(e) {
+                                e.respondWith(fetch(e.request).catch(function() { return new Response('Offline Mode'); }));
+                            });
+                        `;
+                        var swBlob = new Blob([swCode], { type: 'application/javascript' });
+                        navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(function(e) {});
+                    } catch(e) {}
+                }
             }
 
             window.addEventListener('beforeinstallprompt', function (e) {
