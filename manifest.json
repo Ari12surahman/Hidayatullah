@@ -8,13 +8,13 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "hidayatullah.vercel.app/hidayatullah.png",
+      "src": "hidayatullah.vercel.app/Hidayatullah.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "hidayatullah.vercel.app/hidayatullah.png",
+      "src": "hidayatullah.vercel.app/Hidayatullah.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
