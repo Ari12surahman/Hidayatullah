@@ -2516,3 +2516,24 @@ function rekalkulasiProgresUnik(nama) {
     return { totalAyatUnik: 0, totalHalamanUnik: 0, suratList: [], perSurat: {} };
   }
 }
+
+// --- API BRIDGE UNTUK VERCEL ---
+function doPost(e) {
+  try {
+    var payload = JSON.parse(e.postData.contents);
+    var funcName = payload.func;
+    var args = payload.args || [];
+    
+    if (typeof this[funcName] !== 'function') {
+      throw new Error('Fungsi ' + funcName + ' tidak ditemukan di backend.');
+    }
+    
+    var result = this[funcName].apply(this, args);
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success', data: result }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+// --- END API BRIDGE ---

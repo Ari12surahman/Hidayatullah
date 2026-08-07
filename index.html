@@ -3201,6 +3201,56 @@
     </div><!-- Close page-dashboard -->
 
     <script>
+        // --- API BRIDGE VERCEL MOCK ---
+        var WEB_APP_URL = ""; // MASUKKAN URL GOOGLE APPS SCRIPT WEB APP DI SINI NANTI
+        if (typeof google === 'undefined') { window.google = {}; }
+        if (!google.script) { google.script = {}; }
+        if (!google.script.run || google.script.run.__isMock) {
+            function createRunner(successHandler, failureHandler) {
+                var runnerObj = {
+                    withSuccessHandler: function (fn) { return createRunner(fn, failureHandler); },
+                    withFailureHandler: function (fn) { return createRunner(successHandler, fn); },
+                    __isMock: true
+                };
+                return new Proxy(runnerObj, {
+                    get: function (target, prop) {
+                        if (prop in target) return target[prop];
+                        return function () {
+                            var args = Array.prototype.slice.call(arguments);
+                            if (!WEB_APP_URL) {
+                                console.error("WEB_APP_URL belum diatur!");
+                                if (failureHandler) failureHandler("WEB_APP_URL belum diatur. Hubungi administrator.");
+                                return;
+                            }
+                            var payload = { func: prop, args: args };
+                            fetch(WEB_APP_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                body: JSON.stringify(payload)
+                            })
+                            .then(function(res) { return res.json(); })
+                            .then(function(res) {
+                                if (res.status === 'success' && successHandler) successHandler(res.data);
+                                else if (res.status === 'error' && failureHandler) failureHandler(res.message);
+                            })
+                            .catch(function(err) {
+                                if (failureHandler) failureHandler(err.toString());
+                            });
+                        };
+                    }
+                });
+            }
+            google.script.run = createRunner(null, null);
+        }
+        if (!google.script.host) {
+            google.script.host = {
+                close: function() { console.log('Mock: window closed'); },
+                setHeight: function() {},
+                setWidth: function() {},
+                origin: ''
+            };
+        }
+        // --- END API BRIDGE ---
         var curUser = null;
         var globRiwayat = [];
         var KEY = 'mutabaah_digital_v1';
