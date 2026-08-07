@@ -8975,6 +8975,9 @@
 
             // Cek dan tampilkan target hafalan santri ybs
             cekDanTampilkanTargetSantri(nama);
+            
+            // Terapkan filter otomatis ke form
+            sinkronkanFormKeTargetSekarang();
 
             // Close dropdown
             toggleSantriDropdown();
@@ -9125,7 +9128,7 @@
                 ubahMetode('Tahap');
             } else if (kat.includes('juz')) {
                 ubahMetode('Quran');
-                switchInputMode('Surat');
+                switchInputMode('Juz');
                 renderDropdownJuz(targetDetail);
                 renderDropdownSurat(targetDetail);
                 isFiltered = true;
