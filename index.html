@@ -6805,30 +6805,38 @@
                 var s = sk.status || 'H'; // Default to Hadir if new
 
                 var card = document.createElement('div');
-                card.className = "bg-slate-50 border border-slate-100 p-3 rounded-2xl flex items-center justify-between transition hover:border-blue-200";
+                card.className = "bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col gap-3 transition hover:border-blue-200";
+
+                var cNotes = sk.catatan || '';
+                var isCatatanVisible = (s === 'I' || s === 'S' || s === 'A');
 
                 var html = `
-                    <div class="flex-1 min-w-0 mr-3">
-                        <div class="font-bold text-slate-700 text-xs truncate">${sk.nama}</div>
-                        <div class="text-[10px] text-slate-400 capitalize">${sk.kelas || ''}</div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1 min-w-0 mr-3">
+                            <div class="font-bold text-slate-700 text-xs truncate">${sk.nama}</div>
+                            <div class="text-[10px] text-slate-400 capitalize">${sk.kelas || ''}</div>
+                        </div>
+                        <div class="flex gap-1">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="absen_${i}" value="H" onchange="toggleCatatanInput(${i})" class="peer hidden" ${s === 'H' ? 'checked' : ''}>
+                                <div class="w-8 h-8 rounded-lg border-2 border-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-400 peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:border-emerald-500 transition">H</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="absen_${i}" value="I" onchange="toggleCatatanInput(${i})" class="peer hidden" ${s === 'I' ? 'checked' : ''}>
+                                <div class="w-8 h-8 rounded-lg border-2 border-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-400 peer-checked:bg-amber-500 peer-checked:text-white peer-checked:border-amber-500 transition">I</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="absen_${i}" value="S" onchange="toggleCatatanInput(${i})" class="peer hidden" ${s === 'S' ? 'checked' : ''}>
+                                <div class="w-8 h-8 rounded-lg border-2 border-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-400 peer-checked:bg-purple-500 peer-checked:text-white peer-checked:border-purple-500 transition">S</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="absen_${i}" value="A" onchange="toggleCatatanInput(${i})" class="peer hidden" ${s === 'A' ? 'checked' : ''}>
+                                <div class="w-8 h-8 rounded-lg border-2 border-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-400 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:border-rose-500 transition">A</div>
+                            </label>
+                        </div>
                     </div>
-                    <div class="flex gap-1">
-                        <label class="cursor-pointer">
-                            <input type="radio" name="absen_${i}" value="H" class="peer hidden" ${s === 'H' ? 'checked' : ''}>
-                            <div class="w-8 h-8 rounded-lg border-2 border-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-400 peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:border-emerald-500 transition">H</div>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="absen_${i}" value="I" class="peer hidden" ${s === 'I' ? 'checked' : ''}>
-                            <div class="w-8 h-8 rounded-lg border-2 border-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-400 peer-checked:bg-amber-500 peer-checked:text-white peer-checked:border-amber-500 transition">I</div>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="absen_${i}" value="S" class="peer hidden" ${s === 'S' ? 'checked' : ''}>
-                            <div class="w-8 h-8 rounded-lg border-2 border-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-400 peer-checked:bg-purple-500 peer-checked:text-white peer-checked:border-purple-500 transition">S</div>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="absen_${i}" value="A" class="peer hidden" ${s === 'A' ? 'checked' : ''}>
-                            <div class="w-8 h-8 rounded-lg border-2 border-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-400 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:border-rose-500 transition">A</div>
-                        </label>
+                    <div id="catatan_container_${i}" class="${isCatatanVisible ? 'block' : 'hidden'} w-full">
+                        <input type="text" id="catatan_input_${i}" value="${cNotes}" placeholder="Catatan/Alasan (opsional)..." class="w-full text-xs p-2 border border-slate-200 rounded-lg outline-none focus:border-blue-400 bg-white">
                     </div>
                 `;
                 card.innerHTML = html;
@@ -6836,6 +6844,21 @@
             });
 
             mainContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function toggleCatatanInput(index) {
+            var checkedStatus = document.querySelector(`input[name="absen_${index}"]:checked`);
+            var s = checkedStatus ? checkedStatus.value : 'H';
+            var container = document.getElementById(`catatan_container_${index}`);
+            if (container) {
+                if (s === 'I' || s === 'S' || s === 'A') {
+                    container.classList.remove('hidden');
+                    container.classList.add('block');
+                } else {
+                    container.classList.remove('block');
+                    container.classList.add('hidden');
+                }
+            }
         }
 
         function simpanAbsensi() {
@@ -6863,12 +6886,16 @@
             globListSantriAbsensi.forEach(function (sk, i) {
                 var checkedStatus = document.querySelector(`input[name="absen_${i}"]:checked`);
                 var status = checkedStatus ? checkedStatus.value : 'H';
+                var catatanInput = document.getElementById(`catatan_input_${i}`);
+                var catatan = catatanInput ? catatanInput.value : '';
+
                 listData.push({
                     nama: sk.nama,
                     status: status,
                     tanggal: tgl,
                     waktu: waktu,
-                    pelapor: curUser.nama
+                    pelapor: curUser.nama,
+                    catatan: catatan
                 });
             });
 
@@ -7036,6 +7063,9 @@
                 else if (x.status === 'A') statusColor = 'bg-rose-100 text-rose-700';
 
                 var isChecked = selectedAbsenRows.has(x.row) ? 'checked' : '';
+                var cNotesSafe = (x.catatan || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                var iconCatatan = x.catatan ? `<button onclick="tampilkanCatatanAbsensi('${cNotesSafe}')" class="w-7 h-7 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-500 hover:text-white transition" title="Lihat Catatan"><i class="fa-solid fa-circle-info text-[10px]"></i></button>` : '';
+                var iconCatatanMob = x.catatan ? `<button onclick="tampilkanCatatanAbsensi('${cNotesSafe}')" class="w-8 h-8 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-500 hover:text-white transition shadow-sm" title="Lihat Catatan"><i class="fa-solid fa-circle-info text-xs"></i></button>` : '';
 
                 if (tbody) {
                     tbody.innerHTML += `
@@ -7050,6 +7080,7 @@
                             </td>
                             <td class="p-3 text-center">
                                  <div class="flex items-center justify-center gap-1">
+                                    ${iconCatatan}
                                     <button onclick="bukaEditAbsensi(${actualIdx})" class="w-7 h-7 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center hover:bg-amber-500 hover:text-white transition" title="Edit"><i class="fa-solid fa-pen-to-square text-[10px]"></i></button>
                                     <button onclick="hapusAbsensiIdx(${x.row})" class="w-7 h-7 bg-rose-50 text-rose-600 rounded-lg flex items-center justify-center hover:bg-rose-500 hover:text-white transition" title="Hapus"><i class="fa-solid fa-trash text-[10px]"></i></button>
                                  </div>
@@ -7074,6 +7105,7 @@
                                     <div class="text-[11px] text-slate-500 font-medium"><i class="fa-regular fa-clock mr-1.5 text-amber-500"></i>${x.waktu}</div>
                                 </div>
                                 <div class="flex items-center gap-1.5">
+                                    ${iconCatatanMob}
                                     <button onclick="bukaEditAbsensi(${actualIdx})" class="w-8 h-8 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center hover:bg-amber-500 hover:text-white transition shadow-sm" title="Edit"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
                                     <button onclick="hapusAbsensiIdx(${x.row})" class="w-8 h-8 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition shadow-sm" title="Hapus"><i class="fa-solid fa-trash text-xs"></i></button>
                                 </div>
@@ -7083,6 +7115,16 @@
                 }
             });
             updateSelectionInfoAbsen();
+        }
+
+        function tampilkanCatatanAbsensi(catatan) {
+            Swal.fire({
+                title: 'Catatan / Alasan',
+                text: catatan,
+                icon: 'info',
+                confirmButtonColor: '#3b82f6',
+                confirmButtonText: 'Tutup'
+            });
         }
 
         function nextPageAbsen() {

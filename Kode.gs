@@ -1339,7 +1339,7 @@ function loadSantriAbsensi(tanggal, waktu, user, role) {
     // 1. Get All Santri
     if (sSantri.getLastRow() < 2) return [];
     const santriData = sSantri.getRange(2, 1, sSantri.getLastRow()-1, 3).getValues();
-    let listSantri = santriData.map(r => ({ nama: r[0], kelas: r[1], musyrif: r[2], status: '' })).filter(x => x.nama);
+    let listSantri = santriData.map(r => ({ nama: r[0], kelas: r[1], musyrif: r[2], status: '', catatan: '' })).filter(x => x.nama);
     
     var rLower = String(role || '').toLowerCase();
     if (rLower !== 'admin' && rLower !== '') {
@@ -1357,6 +1357,7 @@ function loadSantriAbsensi(tanggal, waktu, user, role) {
     absenData.shift(); // remove header
     
     const mappedStatus = {};
+    const mappedCatatan = {};
     absenData.forEach(r => {
       // r[0]: Tgl, r[1]: Waktu, r[2]: Nama, r[3]: Status
       let rowDateISO = "";
@@ -1374,12 +1375,14 @@ function loadSantriAbsensi(tanggal, waktu, user, role) {
 
       if (rowDateISO === targetDateISO && String(r[1]).trim() === String(waktu).trim()) {
         mappedStatus[r[2]] = r[3];
+        mappedCatatan[r[2]] = r[5] || "";
       }
     });
     
     // 3. Merge
     listSantri.forEach(s => {
       if (mappedStatus[s.nama]) s.status = mappedStatus[s.nama];
+      if (mappedCatatan[s.nama]) s.catatan = mappedCatatan[s.nama];
     });
     
     return listSantri;
@@ -1431,11 +1434,12 @@ function simpanAbsensi(listData) {
       item.waktu,
       item.nama,
       item.status,
-      item.pelapor
+      item.pelapor,
+      item.catatan || ""
     ]);
     
     if (rowsToAppend.length > 0) {
-      sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, 5).setValues(rowsToAppend);
+      sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, 6).setValues(rowsToAppend);
     }
     
     return "SUKSES";
@@ -1521,7 +1525,8 @@ function getRekapAbsensi(tglAwal, tglAkhir, user, role) {
           waktu: r[1],
           nama: r[2],
           status: r[3],
-          pelapor: r[4]
+          pelapor: r[4],
+          catatan: r[5] || ""
         });
       }
     });
