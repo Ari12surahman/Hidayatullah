@@ -218,24 +218,53 @@ function kalkulasiProgressTarget(targetStr, stats, mqList) {
       var numJuz = parseInt(matchJuz[1]);
       var juzInfo = getJuzRange(numJuz);
       if (juzInfo) {
+        // Bangun daftar surat yang BENAR-BENAR ada di Juz ini berdasarkan Master Quran
+        var suratDalamJuz = {};
+        if (mqList && mqList.length > 0) {
+          mqList.forEach(function(m) {
+            if (m.halaman >= juzInfo.start && m.halaman <= juzInfo.end && m.surat) {
+              suratDalamJuz[normalizeSurat(m.surat)] = true;
+            }
+          });
+        }
+        
         var pagesDone = {};
+        // Filter: hanya hitung surat yang ADA di Juz target
+        var filteredSurahs = [];
         setoranList.forEach(function(item) {
+          var itemSuratNorm = item.surat ? normalizeSurat(item.surat) : '';
+          var isInJuz = false;
+          
+          // Cek berdasarkan halaman
           if (item.halAwal > 0 || item.halAkhir > 0) {
             var ha = item.halAwal || item.halAkhir;
             var hk = item.halAkhir || item.halAwal;
             for (var p = Math.min(ha, hk); p <= Math.max(ha, hk); p++) {
               if (p >= juzInfo.start && p <= juzInfo.end) {
                 pagesDone[p] = true;
+                isInJuz = true;
               }
             }
           }
+          
+          // Cek berdasarkan nama surat (cocokkan dengan Master Quran)
+          if (!isInJuz && itemSuratNorm && suratDalamJuz[itemSuratNorm]) {
+            isInJuz = true;
+          }
+          
+          if (isInJuz && item.surat && item.surat !== '-' && item.surat !== '') {
+            if (filteredSurahs.indexOf(item.surat) === -1) filteredSurahs.push(item.surat);
+          }
         });
+        
         var completedHal = Object.keys(pagesDone).length;
-        if (completedHal === 0 && srtCount > 0 && (numJuz === 30 || numJuz === 29)) {
+        var filteredSrtCount = filteredSurahs.length;
+        
+        if (completedHal === 0 && filteredSrtCount > 0 && (numJuz === 30 || numJuz === 29)) {
           var maxS = numJuz === 30 ? 37 : 11;
-          persen = Math.min(100, Math.round((srtCount / maxS) * 100));
-          tercapai = srtCount + " dari " + maxS + " Surat (" + completedHal + " / " + juzInfo.totalHal + " Hal)";
-          var sisaS = Math.max(0, maxS - srtCount);
+          persen = Math.min(100, Math.round((filteredSrtCount / maxS) * 100));
+          tercapai = filteredSrtCount + " dari " + maxS + " Surat (" + completedHal + " / " + juzInfo.totalHal + " Hal)";
+          var sisaS = Math.max(0, maxS - filteredSrtCount);
           sisa = sisaS > 0 ? ("Sisa " + sisaS + " surat lagi di " + juzInfo.nama) : ("Target " + juzInfo.nama + " Selesai! 🎉");
         } else {
           persen = Math.min(100, Math.round((completedHal / juzInfo.totalHal) * 100));
@@ -243,7 +272,7 @@ function kalkulasiProgressTarget(targetStr, stats, mqList) {
           var sisaH = Math.max(0, juzInfo.totalHal - completedHal);
           sisa = sisaH > 0 ? ("Sisa " + sisaH + " halaman lagi di " + juzInfo.nama) : ("Target " + juzInfo.nama + " Selesai! 🎉");
         }
-        return { persen: persen, tercapai: tercapai, sisa: sisa, surat: srtCount, hal: completedHal, ayat: ayatCount };
+        return { persen: persen, tercapai: tercapai, sisa: sisa, surat: filteredSrtCount, hal: completedHal, ayat: ayatCount };
       }
     }
     var maxHal = 600;
