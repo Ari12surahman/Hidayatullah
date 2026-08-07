@@ -10157,7 +10157,11 @@
                 sembunyikanTombolPWA();
             });
 
-            tampilkanTombolPWA();
+            // Tampilkan tombol PWA JIKA di iOS (karena iOS tidak mendukung beforeinstallprompt)
+            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            if (isIOS) {
+                tampilkanTombolPWA();
+            }
         }
 
         function tampilkanTombolPWA() {
