@@ -3368,11 +3368,13 @@
             if (!curUser) {
                 // Background fetch settings only for login page
                 google.script.run.withSuccessHandler(function (res) {
-                    if (res.settings) {
-                        localStorage.setItem('mutabaah_settings', JSON.stringify(res.settings));
-                        renderSettings(res.settings);
+                    if (res) {
+                        localStorage.setItem('mutabaah_settings', JSON.stringify(res));
+                        renderSettings(res);
+                        var el = document.getElementById('appNameDisplayLogin');
+                        if (el) el.innerText = res["App Name"] || "Hidayatullah Tarakan";
                     }
-                }).getInitialData(null, 'musyrif');
+                }).getAppSettings();
                 return;
             }
 
@@ -10093,7 +10095,8 @@
                 return;
             }
 
-            if (typeof google === 'undefined' || !google.script) {
+            var isAppsScript = window.location.hostname.includes("googleusercontent.com");
+            if (!isAppsScript) {
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(e) {});
                 }
