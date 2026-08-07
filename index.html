@@ -3234,7 +3234,14 @@
                                 else if (res.status === 'error' && failureHandler) failureHandler(res.message);
                             })
                             .catch(function(err) {
-                                if (failureHandler) failureHandler(err.toString());
+                                if (failureHandler) {
+                                    failureHandler(err.toString());
+                                } else {
+                                    alert("Error: Gagal menghubungi server Apps Script. Pastikan Anda telah men-deploy Kode.gs terbaru dengan akses 'Siapa saja' (Anyone). Detail: " + err.toString());
+                                    // Reset tombol secara paksa karena failureHandler tidak ada
+                                    var btn = document.querySelector('button[type="submit"]');
+                                    if (btn) { btn.innerHTML = 'MASUK'; btn.disabled = false; }
+                                }
                             });
                         };
                     }
