@@ -4804,16 +4804,16 @@
                     if (sAkhir) sAkhir.add(new Option("Loading...", ""));
                 } else {
                     var allowedSurahs = [];
-                    if (filterTargetStr && globMasterQuran && globMasterQuran.length > 0) {
+                    if (filterTargetStr) {
                         var tTrim = String(filterTargetStr).trim().toLowerCase();
                         var mJ = tTrim.match(/juz\s*(\d+)/i) || tTrim.match(/juz:(\d+)/i);
-                        if (mJ && mJ[1]) {
+                        var mS = tTrim.match(/surat:([^|]+)\|([^\s|]+)/i);
+                        
+                        if (mJ && mJ[1] && globMasterQuran && globMasterQuran.length > 0) {
                             var jR = getJuzRangeClient(parseInt(mJ[1]));
                             if (jR) {
                                 globMasterQuran.forEach(function(m) {
                                     if (m.halaman >= jR.start && m.halaman <= jR.end && m.surat) {
-                                        var normS = normalizeSurat(m.surat);
-                                        // Cari nama asli dari globDaftarSurat yang cocok
                                         var matchedName = globDaftarSurat.find(function(ds) {
                                             return isSuratMatch(ds, m.surat);
                                         });
@@ -4822,6 +4822,14 @@
                                         }
                                     }
                                 });
+                            }
+                        } else if (mS && mS[1] && mS[2]) {
+                            var idx1 = globDaftarSurat.findIndex(function(s) { return isSuratMatch(s, mS[1]); });
+                            var idx2 = globDaftarSurat.findIndex(function(s) { return isSuratMatch(s, mS[2]); });
+                            if (idx1 !== -1 && idx2 !== -1) {
+                                var minIdx = Math.min(idx1, idx2);
+                                var maxIdx = Math.max(idx1, idx2);
+                                allowedSurahs = globDaftarSurat.slice(minIdx, maxIdx + 1);
                             }
                         }
                     }
