@@ -3367,6 +3367,26 @@
         }
 
         // BUNDLED INITIALIZATION
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible' && typeof curUser !== 'undefined' && curUser) {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run.withSuccessHandler(function (res) {
+                        if (res && !res.error) {
+                            if (res.santri) {
+                                globSantriList = res.santri;
+                                localStorage.setItem('mutabaah_santri_data', JSON.stringify(res.santri));
+                                var formSec = document.getElementById('formSection');
+                                if (!formSec || formSec.classList.contains('d-none')) {
+                                    renderSantriList(res.santri);
+                                }
+                            }
+                            if (res.targets) { globTargetList = res.targets; localStorage.setItem('mutabaah_targets', JSON.stringify(res.targets)); }
+                            if (res.masterKelas) { globMasterKelas = res.masterKelas; localStorage.setItem('mutabaah_master_kelas', JSON.stringify(res.masterKelas)); }
+                        }
+                    }).getInitialData(curUser.user, curUser.role);
+                }
+            }
+        });
         function initApp() {
             if (typeof google === 'undefined' || !google.script) {
                 console.log("Running outside Google Apps Script (Vercel Mode)");
