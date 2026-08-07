@@ -1511,9 +1511,11 @@
                                 </div>
 
                                 <!-- Mode Toggle Juz/Surat -->
-                                <div id="inputModeToggleContainer">
-                                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Mode
-                                        Input</label>
+                                <div id="inputModeToggleContainer" class="relative">
+                                    <div class="flex justify-between items-center ml-1">
+                                        <label class="text-[11px] font-bold text-slate-400 uppercase">Mode Input</label>
+                                        <button type="button" onclick="resetFilterForm()" id="btnResetFilter" class="text-[10px] text-emerald-600 font-bold hidden bg-emerald-50 px-2 py-0.5 rounded-full hover:bg-emerald-100 transition"><i class="fa-solid fa-rotate-right mr-1"></i>Tampilkan Semua</button>
+                                    </div>
                                     <div class="flex gap-2 mt-1.5 p-1 bg-slate-100 rounded-2xl">
                                         <button type="button" onclick="switchInputMode('Juz')" id="btnModeJuz"
                                             class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all bg-white text-[#1a7d56] shadow-sm">
@@ -3295,8 +3297,8 @@
 
         window.onload = function () {
             initPWAModule();
-            var juzS = document.getElementById('juzStart'); var juzE = document.getElementById('juzEnd');
-            for (var i = 1; i <= 30; i++) { juzS.add(new Option('Juz ' + i, i)); juzE.add(new Option('Juz ' + i, i)); }
+            renderDropdownJuz();
+
             var todayString = getTodayWIB();
             document.getElementById('dlTglStart').value = todayString;
             document.getElementById('dlTglEnd').value = todayString;
@@ -4748,7 +4750,42 @@
                 if (radioA) radioA.checked = true;
             }
         }
-        function renderDropdownSurat() {
+        function renderDropdownJuz(filterTargetStr = null) {
+            var juzS = document.getElementById('juzStart'); 
+            var juzE = document.getElementById('juzEnd');
+            if (!juzS || !juzE) return;
+            
+            juzS.innerHTML = '';
+            juzE.innerHTML = '';
+            
+            var allowedJuz = [];
+            if (filterTargetStr) {
+                var tTrim = String(filterTargetStr).trim().toLowerCase();
+                var mJ = tTrim.match(/juz\s*(\d+)/i) || tTrim.match(/juz:(\d+)/i);
+                if (mJ && mJ[1]) allowedJuz.push(parseInt(mJ[1]));
+            }
+            
+            for (var i = 1; i <= 30; i++) {
+                if (allowedJuz.length === 0 || allowedJuz.includes(i)) {
+                    juzS.add(new Option('Juz ' + i, i)); 
+                    juzE.add(new Option('Juz ' + i, i));
+                }
+            }
+        }
+
+        function getJuzRangeClient(juzNum) {
+            var j = parseInt(juzNum);
+            if (j === 1) return { start: 1, end: 21, totalHal: 21, nama: "Juz 1" };
+            if (j === 30) return { start: 582, end: 604, totalHal: 23, nama: "Juz 30" };
+            if (j >= 2 && j <= 29) {
+                var s = ((j - 1) * 20) + 2;
+                var e = (j * 20) + 1;
+                return { start: s, end: e, totalHal: 20, nama: "Juz " + j };
+            }
+            return null;
+        }
+
+        function renderDropdownSurat(filterTargetStr = null) {
             var sAwal = document.getElementById('suratAwal');
             var sAkhir = document.getElementById('suratAkhir');
 
@@ -4766,9 +4803,34 @@
                     if (sAwal) sAwal.add(new Option("Loading...", ""));
                     if (sAkhir) sAkhir.add(new Option("Loading...", ""));
                 } else {
+                    var allowedSurahs = [];
+                    if (filterTargetStr && globMasterQuran && globMasterQuran.length > 0) {
+                        var tTrim = String(filterTargetStr).trim().toLowerCase();
+                        var mJ = tTrim.match(/juz\s*(\d+)/i) || tTrim.match(/juz:(\d+)/i);
+                        if (mJ && mJ[1]) {
+                            var jR = getJuzRangeClient(parseInt(mJ[1]));
+                            if (jR) {
+                                globMasterQuran.forEach(function(m) {
+                                    if (m.halaman >= jR.start && m.halaman <= jR.end && m.surat) {
+                                        var normS = normalizeSurat(m.surat);
+                                        // Cari nama asli dari globDaftarSurat yang cocok
+                                        var matchedName = globDaftarSurat.find(function(ds) {
+                                            return isSuratMatch(ds, m.surat);
+                                        });
+                                        if (matchedName && allowedSurahs.indexOf(matchedName) === -1) {
+                                            allowedSurahs.push(matchedName);
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }
+
                     globDaftarSurat.forEach(function (x) {
-                        if (sAwal) sAwal.add(new Option(x, x));
-                        if (sAkhir) sAkhir.add(new Option(x, x));
+                        if (allowedSurahs.length === 0 || allowedSurahs.indexOf(x) !== -1) {
+                            if (sAwal) sAwal.add(new Option(x, x));
+                            if (sAkhir) sAkhir.add(new Option(x, x));
+                        }
                     });
                 }
             }
@@ -9030,29 +9092,68 @@
             }
         }
 
+        function resetFilterForm() {
+            var btnReset = document.getElementById('btnResetFilter');
+            if (btnReset) btnReset.classList.add('hidden');
+            renderDropdownJuz(null);
+            renderDropdownSurat(null);
+            autoFillHalaman();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    toast: true, position: 'top-end', icon: 'info',
+                    title: 'Filter dilepas, semua Juz & Surat ditampilkan',
+                    showConfirmButton: false, timer: 2000
+                });
+            }
+        }
+
         function sinkronkanFormKeTargetSekarang() {
-            if (!curSelectedSantriTarget) return;
+            var btnReset = document.getElementById('btnResetFilter');
+            if (!curSelectedSantriTarget) {
+                renderDropdownJuz(null);
+                renderDropdownSurat(null);
+                if (btnReset) btnReset.classList.add('hidden');
+                return;
+            }
+
             var kat = String(curSelectedSantriTarget.kategori).toLowerCase();
+            var targetDetail = curSelectedSantriTarget.detail;
+            
+            var isFiltered = false;
+
             if (kat.includes('tahap') || kat.includes('iqra')) {
                 ubahMetode('Tahap');
             } else if (kat.includes('juz')) {
                 ubahMetode('Quran');
                 switchInputMode('Surat');
+                renderDropdownJuz(targetDetail);
+                renderDropdownSurat(targetDetail);
+                isFiltered = true;
             } else if (kat.includes('surat') || kat.includes('ayat')) {
                 ubahMetode('Quran');
                 switchInputMode('Surat');
+                renderDropdownSurat(targetDetail);
+                isFiltered = true;
             } else if (kat.includes('halaman') || kat.includes('hal')) {
                 ubahMetode('Quran');
                 switchInputMode('Surat');
                 var h1 = document.getElementById('hal1');
                 if (h1) h1.focus();
             }
+
+            if (isFiltered && btnReset) {
+                btnReset.classList.remove('hidden');
+            } else if (btnReset) {
+                btnReset.classList.add('hidden');
+            }
+
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     toast: true,
                     position: 'top-end',
                     icon: 'success',
-                    title: 'Form disinkronisasi ke mode: ' + curSelectedSantriTarget.kategori,
+                    title: 'Form disinkronisasi: ' + curSelectedSantriTarget.kategori,
+                    text: isFiltered ? 'Opsi dropdown telah difilter sesuai target' : '',
                     showConfirmButton: false,
                     timer: 2000
                 });
