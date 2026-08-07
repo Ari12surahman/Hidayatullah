@@ -7063,7 +7063,7 @@
                 else if (x.status === 'A') statusColor = 'bg-rose-100 text-rose-700';
 
                 var isChecked = selectedAbsenRows.has(x.row) ? 'checked' : '';
-                var cNotesSafe = (x.catatan || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                var cNotesSafe = String(x.catatan || '').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n').replace(/\r/g, '');
                 var iconCatatan = x.catatan ? `<button onclick="tampilkanCatatanAbsensi('${cNotesSafe}')" class="w-7 h-7 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-500 hover:text-white transition" title="Lihat Catatan"><i class="fa-solid fa-circle-info text-[10px]"></i></button>` : '';
                 var iconCatatanMob = x.catatan ? `<button onclick="tampilkanCatatanAbsensi('${cNotesSafe}')" class="w-8 h-8 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-500 hover:text-white transition shadow-sm" title="Lihat Catatan"><i class="fa-solid fa-circle-info text-xs"></i></button>` : '';
 
