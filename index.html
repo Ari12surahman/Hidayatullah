@@ -9728,26 +9728,45 @@
             if (container) {
                 container.innerHTML = '';
                 if (kat.indexOf('Juz') !== -1) {
-                    var sel = document.createElement('select');
-                    sel.id = 'selMKTargetJuz';
-                    sel.className = 'w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-extrabold text-slate-800 outline-none focus:ring-2 focus:ring-amber-500 mb-2 shadow-sm';
-                    sel.onchange = function() { syncMasterKelasTargetVal(); };
-                    var optNames = [
-                        {val: "JUZ:30 | Juz 30 (An-Naba s/d An-Nas - Hal 582-604)", text: "Juz 30 (An-Naba s/d An-Nas)"},
-                        {val: "JUZ:29 | Juz 29 (Al-Mulk s/d Al-Mursalat - Hal 562-581)", text: "Juz 29 (Al-Mulk s/d Al-Mursalat)"},
-                        {val: "JUZ:28 | Juz 28 (Al-Mujadilah s/d At-Tahrim - Hal 542-561)", text: "Juz 28 (Al-Mujadilah s/d At-Tahrim)"}
-                    ];
-                    for (var j = 1; j <= 27; j++) {
-                        optNames.push({val: "JUZ:" + j + " | Juz " + j + " (Hal " + (((j-1)*20)+2) + "-" + ((j*20)+1) + ")", text: "Juz " + j + " (20 Halaman)"});
+                    var grid = document.createElement('div');
+                    grid.className = 'grid grid-cols-2 gap-2 mb-2';
+
+                    var selJuzAwal = document.createElement('select');
+                    selJuzAwal.id = 'selMKJuzAwal';
+                    selJuzAwal.className = 'bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-extrabold text-slate-800 outline-none shadow-sm';
+                    selJuzAwal.onchange = function() { syncMasterKelasTargetVal(); };
+                    
+                    var selJuzAkhir = document.createElement('select');
+                    selJuzAkhir.id = 'selMKJuzAkhir';
+                    selJuzAkhir.className = 'bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-extrabold text-slate-800 outline-none shadow-sm';
+                    selJuzAkhir.onchange = function() { syncMasterKelasTargetVal(); };
+
+                    for (var j = 1; j <= 30; j++) {
+                        selJuzAwal.add(new Option('Juz Awal: ' + j, j));
+                        selJuzAkhir.add(new Option('Juz Akhir: ' + j, j));
                     }
-                    optNames.push({val: "JUZ:30 | 30 Juz Lengkap (Al-Fatihah s/d An-Nas)", text: "30 Juz Lengkap"});
-                    optNames.forEach(function(o) {
-                        var opt = document.createElement('option');
-                        opt.value = o.val;
-                        opt.innerText = o.text;
-                        sel.appendChild(opt);
-                    });
-                    container.appendChild(sel);
+                    selJuzAwal.value = 30;
+                    selJuzAkhir.value = 30;
+
+                    var inpHalAwal = document.createElement('input');
+                    inpHalAwal.type = 'number';
+                    inpHalAwal.id = 'inptMKHalAwal';
+                    inpHalAwal.className = 'bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-extrabold text-slate-800 outline-none shadow-sm';
+                    inpHalAwal.placeholder = 'Hal Awal (Cth: 1)';
+                    inpHalAwal.oninput = function() { syncMasterKelasTargetVal(); };
+
+                    var inpHalAkhir = document.createElement('input');
+                    inpHalAkhir.type = 'number';
+                    inpHalAkhir.id = 'inptMKHalAkhir';
+                    inpHalAkhir.className = 'bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-extrabold text-slate-800 outline-none shadow-sm';
+                    inpHalAkhir.placeholder = 'Hal Akhir (Cth: 20)';
+                    inpHalAkhir.oninput = function() { syncMasterKelasTargetVal(); };
+
+                    grid.appendChild(selJuzAwal);
+                    grid.appendChild(selJuzAkhir);
+                    grid.appendChild(inpHalAwal);
+                    grid.appendChild(inpHalAkhir);
+                    container.appendChild(grid);
                 } else if (kat.indexOf('Surat') !== -1) {
                     var grid = document.createElement('div');
                     grid.className = 'grid grid-cols-2 gap-2 mb-2';
@@ -9794,6 +9813,22 @@
             }
             if (valToSelect !== undefined && valToSelect !== '') {
                 inp.value = valToSelect;
+                if (kat.indexOf('Juz') !== -1 && valToSelect.indexOf('Juz') !== -1) {
+                    var matchJuz = valToSelect.match(/Juz\s+(\d+)(?:\s+s\/d\s+(\d+))?/i);
+                    if(matchJuz) {
+                        var jAw = document.getElementById('selMKJuzAwal');
+                        var jAk = document.getElementById('selMKJuzAkhir');
+                        if(jAw) jAw.value = matchJuz[1];
+                        if(jAk) jAk.value = matchJuz[2] || matchJuz[1];
+                    }
+                    var matchHal = valToSelect.match(/Hal\s+(\d+)(?:\s*-\s*(\d+))?/i) || valToSelect.match(/Hal\s+(\d+)/i);
+                    if(matchHal) {
+                        var hAw = document.getElementById('inptMKHalAwal');
+                        var hAk = document.getElementById('inptMKHalAkhir');
+                        if(hAw) hAw.value = matchHal[1];
+                        if(hAk) hAk.value = matchHal[2] || '';
+                    }
+                }
             } else {
                 syncMasterKelasTargetVal();
             }
@@ -9806,8 +9841,20 @@
             if (!inp) return;
             
             if (kat.indexOf('Juz') !== -1) {
-                var sel = document.getElementById('selMKTargetJuz');
-                if (sel && sel.value) inp.value = sel.value;
+                var jAw = document.getElementById('selMKJuzAwal');
+                var jAk = document.getElementById('selMKJuzAkhir');
+                var hAw = document.getElementById('inptMKHalAwal');
+                var hAk = document.getElementById('inptMKHalAkhir');
+                if (jAw && jAk) {
+                    var str = "Juz " + jAw.value;
+                    if (jAw.value !== jAk.value) str += " s/d " + jAk.value;
+                    if (hAw && hAw.value && hAk && hAk.value) {
+                        str += " (Hal " + hAw.value + " - " + hAk.value + ")";
+                    } else if (hAw && hAw.value) {
+                        str += " (Mulai Hal " + hAw.value + ")";
+                    }
+                    inp.value = str;
+                }
             } else if (kat.indexOf('Surat') !== -1) {
                 var s1 = document.getElementById('selMKTargetSurat1');
                 var s2 = document.getElementById('selMKTargetSurat2');
@@ -9986,26 +10033,45 @@
             if (container) {
                 container.innerHTML = '';
                 if (kat.indexOf('Juz') !== -1) {
-                    var sel = document.createElement('select');
-                    sel.id = 'selTargetJuz';
-                    sel.className = 'w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-extrabold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 mb-2';
-                    sel.onchange = function() { syncTargetDetailVal(); };
-                    var optNames = [
-                        {val: "JUZ:30 | Juz 30 (An-Naba s/d An-Nas - Hal 582-604)", text: "Juz 30 (An-Naba s/d An-Nas)"},
-                        {val: "JUZ:29 | Juz 29 (Al-Mulk s/d Al-Mursalat - Hal 562-581)", text: "Juz 29 (Al-Mulk s/d Al-Mursalat)"},
-                        {val: "JUZ:28 | Juz 28 (Al-Mujadilah s/d At-Tahrim - Hal 542-561)", text: "Juz 28 (Al-Mujadilah s/d At-Tahrim)"}
-                    ];
-                    for (var j = 1; j <= 27; j++) {
-                        optNames.push({val: "JUZ:" + j + " | Juz " + j + " (Hal " + (((j-1)*20)+2) + "-" + ((j*20)+1) + ")", text: "Juz " + j + " (20 Halaman)"});
+                    var grid = document.createElement('div');
+                    grid.className = 'grid grid-cols-2 gap-2 mb-2';
+
+                    var selJuzAwal = document.createElement('select');
+                    selJuzAwal.id = 'selTargetJuzAwal';
+                    selJuzAwal.className = 'bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-extrabold text-slate-800 outline-none shadow-sm';
+                    selJuzAwal.onchange = function() { syncTargetDetailVal(); };
+                    
+                    var selJuzAkhir = document.createElement('select');
+                    selJuzAkhir.id = 'selTargetJuzAkhir';
+                    selJuzAkhir.className = 'bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-extrabold text-slate-800 outline-none shadow-sm';
+                    selJuzAkhir.onchange = function() { syncTargetDetailVal(); };
+
+                    for (var j = 1; j <= 30; j++) {
+                        selJuzAwal.add(new Option('Juz Awal: ' + j, j));
+                        selJuzAkhir.add(new Option('Juz Akhir: ' + j, j));
                     }
-                    optNames.push({val: "JUZ:30 | 30 Juz Lengkap (Al-Fatihah s/d An-Nas)", text: "30 Juz Lengkap"});
-                    optNames.forEach(function(o) {
-                        var opt = document.createElement('option');
-                        opt.value = o.val;
-                        opt.innerText = o.text;
-                        sel.appendChild(opt);
-                    });
-                    container.appendChild(sel);
+                    selJuzAwal.value = 30;
+                    selJuzAkhir.value = 30;
+
+                    var inpHalAwal = document.createElement('input');
+                    inpHalAwal.type = 'number';
+                    inpHalAwal.id = 'inptTargetHalAwal';
+                    inpHalAwal.className = 'bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-extrabold text-slate-800 outline-none shadow-sm';
+                    inpHalAwal.placeholder = 'Hal Awal (Cth: 1)';
+                    inpHalAwal.oninput = function() { syncTargetDetailVal(); };
+
+                    var inpHalAkhir = document.createElement('input');
+                    inpHalAkhir.type = 'number';
+                    inpHalAkhir.id = 'inptTargetHalAkhir';
+                    inpHalAkhir.className = 'bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-extrabold text-slate-800 outline-none shadow-sm';
+                    inpHalAkhir.placeholder = 'Hal Akhir (Cth: 20)';
+                    inpHalAkhir.oninput = function() { syncTargetDetailVal(); };
+
+                    grid.appendChild(selJuzAwal);
+                    grid.appendChild(selJuzAkhir);
+                    grid.appendChild(inpHalAwal);
+                    grid.appendChild(inpHalAkhir);
+                    container.appendChild(grid);
                 } else if (kat.indexOf('Surat') !== -1) {
                     var grid = document.createElement('div');
                     grid.className = 'grid grid-cols-2 gap-2 mb-2';
@@ -10052,6 +10118,22 @@
             }
             if (valToSelect !== undefined && valToSelect !== '') {
                 inp.value = valToSelect;
+                if (kat.indexOf('Juz') !== -1 && valToSelect.indexOf('Juz') !== -1) {
+                    var matchJuz = valToSelect.match(/Juz\s+(\d+)(?:\s+s\/d\s+(\d+))?/i);
+                    if(matchJuz) {
+                        var jAw = document.getElementById('selTargetJuzAwal');
+                        var jAk = document.getElementById('selTargetJuzAkhir');
+                        if(jAw) jAw.value = matchJuz[1];
+                        if(jAk) jAk.value = matchJuz[2] || matchJuz[1];
+                    }
+                    var matchHal = valToSelect.match(/Hal\s+(\d+)(?:\s*-\s*(\d+))?/i) || valToSelect.match(/Hal\s+(\d+)/i);
+                    if(matchHal) {
+                        var hAw = document.getElementById('inptTargetHalAwal');
+                        var hAk = document.getElementById('inptTargetHalAkhir');
+                        if(hAw) hAw.value = matchHal[1];
+                        if(hAk) hAk.value = matchHal[2] || '';
+                    }
+                }
             } else {
                 syncTargetDetailVal();
             }
@@ -10064,8 +10146,20 @@
             if (!inp) return;
             
             if (kat.indexOf('Juz') !== -1) {
-                var sel = document.getElementById('selTargetJuz');
-                if (sel && sel.value) inp.value = sel.value;
+                var jAw = document.getElementById('selTargetJuzAwal');
+                var jAk = document.getElementById('selTargetJuzAkhir');
+                var hAw = document.getElementById('inptTargetHalAwal');
+                var hAk = document.getElementById('inptTargetHalAkhir');
+                if (jAw && jAk) {
+                    var str = "Juz " + jAw.value;
+                    if (jAw.value !== jAk.value) str += " s/d " + jAk.value;
+                    if (hAw && hAw.value && hAk && hAk.value) {
+                        str += " (Hal " + hAw.value + " - " + hAk.value + ")";
+                    } else if (hAw && hAw.value) {
+                        str += " (Mulai Hal " + hAw.value + ")";
+                    }
+                    inp.value = str;
+                }
             } else if (kat.indexOf('Surat') !== -1) {
                 var s1 = document.getElementById('selTargetSurat1');
                 var s2 = document.getElementById('selTargetSurat2');
