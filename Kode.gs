@@ -843,8 +843,10 @@ function editSantri(r, n, c, m, passWali, target){
 
 function hapusSantri(row) {
   try {
+    var r = parseInt(row, 10);
+    if (!r) return "ERROR: Row tidak valid";
     var sheet = getSheet('Data_Santri');
-    sheet.deleteRow(row);
+    sheet.deleteRow(r);
     return "SUKSES";
   } catch(e) {
     return "ERROR: " + e.toString();
