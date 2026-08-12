@@ -56,7 +56,6 @@ function getListSantri(u, r, searchQuery) {
     nama: row[0], 
     kelas: row[1], 
     musyrif: row[2], 
-    password: row[3], // Password ada di kolom D (Index 3)
     target: row[4] || '', // Target ada di kolom E (Index 4)
     row: i + 2
   })).filter(x => x.nama);
@@ -936,7 +935,6 @@ function getListUser(searchQuery) {
   
   let allData = d.map((row, i) => ({
     username: row[0],
-    password: row[1],
     nama: row[2],
     role: row[3],
     row: i + 2

@@ -3284,17 +3284,15 @@
                                 return;
                             }
                             var payload = { func: prop, args: args };
-                            console.log("[API Bridge] Memanggil: " + prop, args);
                             fetch(WEB_APP_URL, {
                                 method: 'POST',
-                                body: JSON.stringify(payload),
-                                redirect: 'follow'
-                            })
-                            .then(function(res) {
+                                headers: {
+                                    'Content-Type': 'text/plain;charset=utf-8',
+                                },
+                                body: JSON.stringify(payload)
+                            }).then(function(res) {
                                 return res.text();
-                            })
-                            .then(function(text) {
-                                console.log("[API Bridge] Response untuk " + prop + ":", text.substring(0, 200));
+                            }).then(function(text) {
                                 if (text.trim().charAt(0) !== '{' && text.trim().charAt(0) !== '[') {
                                     throw new Error("Server tidak mengembalikan JSON. Kemungkinan deploy belum benar. Response: " + text.substring(0, 100));
                                 }
