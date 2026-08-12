@@ -1553,9 +1553,66 @@
                                                 class="w-full p-3 text-center rounded-xl border border-blue-200 font-bold text-blue-700 outline-none bg-white"></select>
                                         </div>
                                     </div>
-                                    <p class="text-[10px] text-blue-400 mt-2 text-center italic">*Pilih rentang juz
-                                        (misal Juz 1
-                                        - Juz 3)</p>
+                                    <div class="grid grid-cols-2 gap-3 mt-3">
+                                        <div>
+                                            <label
+                                                class="text-[10px] text-blue-400 uppercase font-bold block mb-1">Surat
+                                                Awal</label>
+                                            <div class="relative">
+                                                <select id="juzSuratAwal"
+                                                    class="w-full appearance-none p-3 rounded-xl border border-blue-200 font-bold text-blue-700 outline-none bg-white pr-8"></select>
+                                                <i
+                                                    class="fa-solid fa-chevron-down absolute right-3 top-4 text-blue-400 pointer-events-none text-xs"></i>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="text-[10px] text-blue-400 uppercase font-bold block mb-1">Surat
+                                                Akhir</label>
+                                            <div class="relative">
+                                                <select id="juzSuratAkhir"
+                                                    class="w-full appearance-none p-3 rounded-xl border border-blue-200 font-bold text-blue-700 outline-none bg-white pr-8"></select>
+                                                <i
+                                                    class="fa-solid fa-chevron-down absolute right-3 top-4 text-blue-400 pointer-events-none text-xs"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3 mt-3">
+                                        <div>
+                                            <label
+                                                class="text-[10px] text-blue-400 uppercase font-bold block mb-1">Halaman
+                                                Awal</label>
+                                            <input type="text" id="juzHal1"
+                                                class="w-full p-3 text-center rounded-xl border border-blue-200 font-bold outline-none bg-white"
+                                                placeholder="Contoh: 1A">
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="text-[10px] text-blue-400 uppercase font-bold block mb-1">Halaman
+                                                Akhir</label>
+                                            <input type="text" id="juzHal2"
+                                                class="w-full p-3 text-center rounded-xl border border-blue-200 font-bold outline-none bg-white"
+                                                placeholder="Contoh: 1B">
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3 mt-3">
+                                        <div>
+                                            <label
+                                                class="text-[10px] text-blue-400 uppercase font-bold block mb-1">Ayat
+                                                Awal</label>
+                                            <input type="number" id="juzAy1"
+                                                class="w-full p-3 text-center rounded-xl border border-blue-200 font-bold outline-none bg-white"
+                                                placeholder="1">
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="text-[10px] text-blue-400 uppercase font-bold block mb-1">Ayat
+                                                Akhir</label>
+                                            <input type="number" id="juzAy2"
+                                                class="w-full p-3 text-center rounded-xl border border-blue-200 font-bold outline-none bg-white"
+                                                placeholder="10">
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- Mode Surat -->
@@ -4793,8 +4850,12 @@
             var allowedJuz = [];
             if (filterTargetStr) {
                 var tTrim = String(filterTargetStr).trim().toLowerCase();
-                var mJ = tTrim.match(/juz\s*(\d+)/i) || tTrim.match(/juz:(\d+)/i);
-                if (mJ && mJ[1]) allowedJuz.push(parseInt(mJ[1]));
+                var mJ = tTrim.match(/juz\s*(\d+)(?:\s*s\/d\s*|\s*-\s*)?(\d+)?/i) || tTrim.match(/juz:(\d+)/i);
+                if (mJ && mJ[1]) {
+                    var startJ = parseInt(mJ[1]);
+                    var endJ = mJ[2] ? parseInt(mJ[2]) : startJ;
+                    for (var k = startJ; k <= endJ; k++) allowedJuz.push(k);
+                }
             }
             
             for (var i = 1; i <= 30; i++) {
@@ -4820,32 +4881,51 @@
         function renderDropdownSurat(filterTargetStr = null) {
             var sAwal = document.getElementById('suratAwal');
             var sAkhir = document.getElementById('suratAkhir');
+            var jsAwal = document.getElementById('juzSuratAwal');
+            var jsAkhir = document.getElementById('juzSuratAkhir');
 
             if (sAwal) sAwal.innerHTML = '';
             if (sAkhir) sAkhir.innerHTML = '';
+            if (jsAwal) jsAwal.innerHTML = '';
+            if (jsAkhir) jsAkhir.innerHTML = '';
 
             if (currentMetode === 'Iqra' || currentMetode === 'Tahap') {
                 var listIqra = ["Tahap 1", "Tahap 2", "Tahap 3", "Tahap 4", "Tahap 5", "Tahap 6"];
                 listIqra.forEach(function (x) {
                     if (sAwal) sAwal.add(new Option(x, x));
                     if (sAkhir) sAkhir.add(new Option(x, x));
+                    if (jsAwal) jsAwal.add(new Option(x, x));
+                    if (jsAkhir) jsAkhir.add(new Option(x, x));
                 });
             } else {
                 if (globDaftarSurat.length === 0) {
                     if (sAwal) sAwal.add(new Option("Loading...", ""));
                     if (sAkhir) sAkhir.add(new Option("Loading...", ""));
+                    if (jsAwal) jsAwal.add(new Option("Loading...", ""));
+                    if (jsAkhir) jsAkhir.add(new Option("Loading...", ""));
                 } else {
                     var allowedSurahs = [];
                     if (filterTargetStr) {
                         var tTrim = String(filterTargetStr).trim().toLowerCase();
-                        var mJ = tTrim.match(/juz\s*(\d+)/i) || tTrim.match(/juz:(\d+)/i);
+                        var mJ = tTrim.match(/juz\s*(\d+)(?:\s*s\/d\s*|\s*-\s*)?(\d+)?/i) || tTrim.match(/juz:(\d+)/i);
                         var mS = tTrim.match(/surat:([^|]+)\|([^\s|]+)/i);
                         
                         if (mJ && mJ[1] && globMasterQuran && globMasterQuran.length > 0) {
-                            var jR = getJuzRangeClient(parseInt(mJ[1]));
-                            if (jR) {
+                            var startJ = parseInt(mJ[1]);
+                            var endJ = mJ[2] ? parseInt(mJ[2]) : startJ;
+                            
+                            var minHal = 9999, maxHal = 0;
+                            for (var j = startJ; j <= endJ; j++) {
+                                var jR = getJuzRangeClient(j);
+                                if (jR) {
+                                    if (jR.start < minHal) minHal = jR.start;
+                                    if (jR.end > maxHal) maxHal = jR.end;
+                                }
+                            }
+                            
+                            if (minHal <= maxHal) {
                                 globMasterQuran.forEach(function(m) {
-                                    if (m.halaman >= jR.start && m.halaman <= jR.end && m.surat) {
+                                    if (m.halaman >= minHal && m.halaman <= maxHal && m.surat) {
                                         var matchedName = globDaftarSurat.find(function(ds) {
                                             return isSuratMatch(ds, m.surat);
                                         });
@@ -4870,6 +4950,8 @@
                         if (allowedSurahs.length === 0 || allowedSurahs.indexOf(x) !== -1) {
                             if (sAwal) sAwal.add(new Option(x, x));
                             if (sAkhir) sAkhir.add(new Option(x, x));
+                            if (jsAwal) jsAwal.add(new Option(x, x));
+                            if (jsAkhir) jsAkhir.add(new Option(x, x));
                         }
                     });
                 }
@@ -4920,15 +5002,10 @@
 
                 queueData.forEach(function (item, idx) {
                     var hafalanText = item.surat;
-                    if (item.kategori === 'Quran' && item.surat.includes('Juz')) {
-                        hafalanText = item.surat; // Juz X - Y
-                    } else {
-                        // Detailed Surat info
-                        var detail = '';
-                        if (item.halAwal != '-') detail += 'Hal: ' + item.halAwal + ' ';
-                        if (item.ayatAwal != '-') detail += 'Ayat: ' + item.ayatAwal;
-                        if (detail) hafalanText += ' <span class="text-[9px] text-slate-400">(' + detail + ')</span>';
-                    }
+                    var detail = '';
+                    if (item.halAwal != '-') detail += 'Hal: ' + item.halAwal + (item.halAkhir != '-' && item.halAkhir != item.halAwal ? '-' + item.halAkhir : '') + ' ';
+                    if (item.ayatAwal != '-') detail += 'Ayat: ' + item.ayatAwal + (item.ayatAkhir != '-' && item.ayatAkhir != item.ayatAwal ? '-' + item.ayatAkhir : '');
+                    if (detail) hafalanText += ' <span class="text-[9px] text-slate-400">(' + detail.trim() + ')</span>';
 
                     tbody.innerHTML += `
                                 <tr class="bg-white hover:bg-slate-50 transition">
@@ -4965,11 +5042,17 @@
                 var js = parseInt(document.getElementById('juzStart').value) || 1;
                 var je = parseInt(document.getElementById('juzEnd').value) || js;
                 if (js > je) return Swal.fire({ icon: 'error', title: 'Error', text: 'Juz Awal tidak boleh lebih besar dari Juz Akhir' });
-                suratVal = (js === je) ? "Juz " + js : "Juz " + js + " - " + je;
-                var sP = (js === 1) ? 1 : ((js === 30) ? 582 : ((js - 1) * 20 + 2));
-                var eP = (je === 1) ? 21 : ((je === 30) ? 604 : (je * 20 + 1));
-                halAwalVal = sP; halAkhirVal = eP;
-                ayatAwalVal = '-'; ayatAkhirVal = '-';
+                
+                var juzStr = (js === je) ? "Juz " + js : "Juz " + js + " - " + je;
+                var sAwal = document.getElementById('juzSuratAwal').value;
+                var sAkhir = document.getElementById('juzSuratAkhir').value;
+                var suratStr = (sAwal && sAkhir) ? ((sAwal === sAkhir) ? sAwal : sAwal + " - " + sAkhir) : "";
+                
+                suratVal = suratStr ? (juzStr + " | " + suratStr) : juzStr;
+                halAwalVal = document.getElementById('juzHal1').value || '-';
+                halAkhirVal = document.getElementById('juzHal2').value || '-';
+                ayatAwalVal = document.getElementById('juzAy1').value || '-';
+                ayatAkhirVal = document.getElementById('juzAy2').value || '-';
             } else {
                 // Mode Surat
                 var sAwal = document.getElementById('suratAwal').value;
