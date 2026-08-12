@@ -816,7 +816,11 @@ function tambahSantri(n, c, m, passWali, target){
   var sheet = getSheet('Data_Santri');
   if(sheet.getMaxColumns() < 5) sheet.insertColumnsAfter(sheet.getMaxColumns(), 5 - sheet.getMaxColumns());
   sheet.appendRow([n, c, m, passWali, target || '']); 
-  return "SUKSES: Santri & Password Wali Ditambahkan"; 
+  return JSON.stringify({
+    status: "SUKSES",
+    message: "Santri & Password Wali Ditambahkan",
+    row: sheet.getLastRow()
+  }); 
 }
 
 function updateSantri(r, n, c, m, passWali, target){ 
@@ -835,6 +839,16 @@ function updateSantri(r, n, c, m, passWali, target){
 
 function editSantri(r, n, c, m, passWali, target){
   return updateSantri(r, n, c, m, passWali, target);
+}
+
+function hapusSantri(row) {
+  try {
+    var sheet = getSheet('Data_Santri');
+    sheet.deleteRow(row);
+    return "SUKSES";
+  } catch(e) {
+    return "ERROR: " + e.toString();
+  }
 }
 
 function hapusData(s,r){ try{ getSheet(s).deleteRow(r); return "SUKSES"; }catch(e){return "ERROR";} }
@@ -1298,7 +1312,11 @@ function simpanMasterKelas(data) {
       return "SUKSES: Master Kelas & Target diperbarui";
     } else {
       s.appendRow(rowVal);
-      return "SUKSES: Master Kelas & Target ditambahkan";
+      return JSON.stringify({
+        status: "SUKSES",
+        message: "Master Kelas & Target ditambahkan",
+        row: s.getLastRow()
+      });
     }
   } catch(e) {
     return "ERROR: " + e.toString();

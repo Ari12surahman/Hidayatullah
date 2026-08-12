@@ -8241,13 +8241,18 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     google.script.run.withSuccessHandler(function (res) {
-                        if (res === 'SUKSES') {
+                        if (String(res).includes('SUKSES')) {
                             Swal.fire('Terhapus!', 'Santri berhasil dihapus.', 'success');
-                            loadDaftarSantri();
-                            // Update cache user list if needed
-                            google.script.run.withSuccessHandler(function (data) {
-                                if (data.santri) localStorage.setItem('mutabaah_santri', JSON.stringify(data.santri));
-                            }).getInitialData(curUser.user, curUser.role);
+                            
+                            // Optimistic UI Update
+                            if (typeof globSantriList !== 'undefined') {
+                                globSantriList = globSantriList.filter(s => String(s.row) !== String(row));
+                                localStorage.setItem('mutabaah_santri', JSON.stringify(globSantriList));
+                                renderDaftarSantri(getFilteredSantriList());
+                                updateSemuaDropdownSantri();
+                            } else {
+                                loadDaftarSantri();
+                            }
                         } else {
                             Swal.fire('Gagal!', res, 'error');
                         }
@@ -8432,20 +8437,42 @@
                 btn.disabled = false;
 
                 if (String(res).includes('SUKSES')) {
-                    var msg = res.includes(':') ? res.split(':')[1].trim() : 'Santri berhasil ditambahkan';
+                    var msg = 'Santri berhasil ditambahkan';
+                    var newRow = null;
+                    try {
+                        var obj = JSON.parse(res);
+                        msg = obj.message || msg;
+                        newRow = obj.row;
+                    } catch(e) {
+                        msg = res.includes(':') ? res.split(':')[1].trim() : msg;
+                    }
                     Swal.fire('Berhasil', msg, 'success');
                     tutupModalTambahSantri();
-                    loadDaftarSantri();
 
-                    // Update cache
-                    google.script.run.withSuccessHandler(function (data) {
-                        if (data.santri) localStorage.setItem('mutabaah_santri', JSON.stringify(data.santri));
-                    }).getInitialData(curUser.user, curUser.role);
-
+                    if (newRow) {
+                        // Optimistic UI Update
+                        var newSantri = {
+                            nama: nama,
+                            kelas: kelas,
+                            musyrif: musyrif,
+                            password: pass,
+                            target: target,
+                            row: newRow
+                        };
+                        globSantriList.push(newSantri);
+                        localStorage.setItem('mutabaah_santri', JSON.stringify(globSantriList));
+                        renderDaftarSantri(getFilteredSantriList());
+                        updateSemuaDropdownSantri();
+                    } else {
+                        loadDaftarSantri();
+                        google.script.run.withSuccessHandler(function (data) {
+                            if (data.santri) localStorage.setItem('mutabaah_santri', JSON.stringify(data.santri));
+                        }).getInitialData(curUser.user, curUser.role);
+                    }
                 } else {
                     Swal.fire('Gagal', res, 'error');
                 }
-            }).tambahSantri(nama, kelas, musyrif, pass, target, wa, uw);
+            }).tambahSantri(nama, kelas, musyrif, pass, target);
         }
 
         // --- TAMBAH USER ---
@@ -9985,10 +10012,39 @@
 
             google.script.run.withSuccessHandler(function (res) {
                 btn.innerText = ori; btn.disabled = false;
-                if (res.includes('SUKSES')) {
-                    Swal.fire({ icon: 'success', title: 'Sukses', text: res, timer: 1500, showConfirmButton: false });
+                if (String(res).includes('SUKSES')) {
+                    var msg = 'Master Kelas diperbarui';
+                    var newRow = null;
+                    try {
+                        var obj = JSON.parse(res);
+                        msg = obj.message || msg;
+                        newRow = obj.row;
+                    } catch(e) {
+                        msg = res.includes(':') ? res.split(':')[1].trim() : res;
+                    }
+                    Swal.fire({ icon: 'success', title: 'Sukses', text: msg, timer: 1500, showConfirmButton: false });
                     tutupModalFormMasterKelas();
-                    loadDataMasterKelas();
+                    
+                    if (newRow && !payload.row) { // Baru ditambahkan
+                        var newMK = {
+                            row: newRow,
+                            nama: payload.nama,
+                            jenjang: payload.jenjang,
+                            target: payload.target,
+                            keterangan: payload.keterangan
+                        };
+                        if (typeof globMasterKelas !== 'undefined') {
+                            globMasterKelas.push(newMK);
+                            localStorage.setItem('mutabaah_master_kelas', JSON.stringify(globMasterKelas));
+                            renderMasterKelasFromCache();
+                            if (typeof updateSemuaDropdownKelas === 'function') updateSemuaDropdownKelas();
+                            if (typeof updateDropdownDetailTarget === 'function') updateDropdownDetailTarget();
+                        } else {
+                            loadDataMasterKelas();
+                        }
+                    } else { // Diperbarui
+                        loadDataMasterKelas();
+                    }
                 } else {
                     Swal.fire('Gagal', res, 'error');
                 }
