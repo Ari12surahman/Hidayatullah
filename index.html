@@ -8249,7 +8249,7 @@
                                 globSantriList = globSantriList.filter(s => String(s.row) !== String(row));
                                 localStorage.setItem('mutabaah_santri', JSON.stringify(globSantriList));
                                 renderDaftarSantri(getFilteredSantriList());
-                                updateSemuaDropdownSantri();
+                                renderSantriList(globSantriList);
                             } else {
                                 loadDaftarSantri();
                             }
@@ -8462,7 +8462,7 @@
                         globSantriList.push(newSantri);
                         localStorage.setItem('mutabaah_santri', JSON.stringify(globSantriList));
                         renderDaftarSantri(getFilteredSantriList());
-                        updateSemuaDropdownSantri();
+                        renderSantriList(globSantriList);
                     } else {
                         loadDaftarSantri();
                         google.script.run.withSuccessHandler(function (data) {
