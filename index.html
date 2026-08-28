@@ -8422,7 +8422,7 @@
             }).withFailureHandler(function (err) {
                 btn.innerHTML = '<i class="fa-solid fa-save"></i> SIMPAN';
                 btn.disabled = false;
-                Swal.fire('Error', 'Gagal menyimpan: ' + err.message, 'error');
+                Swal.fire('Error', 'Gagal menyimpan: ' + (typeof err === 'string' ? err : err.message || err), 'error');
             }).updateUser(editUserRow, { username: u, nama: n, role: r, password: p, noWa: wa });
         }
 
