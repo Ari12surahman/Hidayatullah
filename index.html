@@ -3286,6 +3286,7 @@
                             var payload = { func: prop, args: args };
                             fetch(WEB_APP_URL, {
                                 method: 'POST',
+                                credentials: 'omit',
                                 headers: {
                                     'Content-Type': 'text/plain;charset=utf-8',
                                 },
@@ -3308,7 +3309,19 @@
                                 if (failureHandler) {
                                     failureHandler(err.toString());
                                 } else {
-                                    alert("Error: Gagal menghubungi server. Detail: " + err.toString());
+                                    if (typeof Swal !== 'undefined') {
+                                        Swal.fire({
+                                            toast: true,
+                                            position: 'top-end',
+                                            icon: 'error',
+                                            title: 'Gagal menghubungi server',
+                                            text: err.toString(),
+                                            showConfirmButton: false,
+                                            timer: 3000
+                                        });
+                                    } else {
+                                        console.error("Error: Gagal menghubungi server. Detail: " + err.toString());
+                                    }
                                     var btn = document.querySelector('button[type="submit"]');
                                     if (btn) { btn.innerHTML = 'MASUK'; btn.disabled = false; }
                                 }
@@ -8406,7 +8419,11 @@
                 } else {
                     Swal.fire('Gagal', res, 'error');
                 }
-            }).editUser(editUserRow, { username: u, nama: n, role: r, password: p, noWa: wa });
+            }).withFailureHandler(function (err) {
+                btn.innerHTML = '<i class="fa-solid fa-save"></i> SIMPAN';
+                btn.disabled = false;
+                Swal.fire('Error', 'Gagal menyimpan: ' + err.message, 'error');
+            }).updateUser(editUserRow, { username: u, nama: n, role: r, password: p, noWa: wa });
         }
 
         // --- TAMBAH SANTRI ---
@@ -10525,7 +10542,14 @@
 
             var isAppsScript = window.location.hostname.includes("googleusercontent.com");
             if (!isAppsScript) {
+                // FORCE UNREGISTER OLD SERVICE WORKER TO FIX CORS/FETCH BUGS
                 if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                        for (let registration of registrations) {
+                            registration.unregister();
+                        }
+                    });
+                    // Daftarkan yang baru
                     navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(e) {});
                 }
             } else {
