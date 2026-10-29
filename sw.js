@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mutabaah-admin-cache-v2';
+const CACHE_NAME = 'mutabaah-admin-cache-v3';
 
 self.addEventListener('install', function(e) {
     self.skipWaiting();
@@ -21,7 +21,7 @@ self.addEventListener('activate', function(e) {
 });
 
 self.addEventListener('fetch', function(e) {
-    if (e.request.method !== 'GET' || e.request.url.indexOf('script.google.com') !== -1 || e.request.url.indexOf('chrome-extension') !== -1) {
+    if (e.request.method !== 'GET' || e.request.url.indexOf('script.google.com') !== -1 || e.request.url.indexOf('googleusercontent.com') !== -1 || e.request.url.indexOf('chrome-extension') !== -1) {
         return; 
     }
 

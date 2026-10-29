@@ -3344,7 +3344,34 @@
         var curUser = null;
         var globRiwayat = [];
         var KEY = 'mutabaah_digital_v1';
-        var globDaftarSurat = [];
+
+        // Master 114 Surat Al-Qur'an lengkap dan berurutan secara kanonikal
+        var DAFTAR_114_SURAT = [
+            "1. Al-Fatihah", "2. Al-Baqarah", "3. Ali 'Imran", "4. An-Nisa'", "5. Al-Ma'idah",
+            "6. Al-An'am", "7. Al-A'raf", "8. Al-Anfal", "9. At-Taubah", "10. Yunus",
+            "11. Hud", "12. Yusuf", "13. Ar-Ra'd", "14. Ibrahim", "15. Al-Hijr",
+            "16. An-Nahl", "17. Al-Isra'", "18. Al-Kahf", "19. Maryam", "20. Taha",
+            "21. Al-Anbiya'", "22. Al-Hajj", "23. Al-Mu'minun", "24. An-Nur", "25. Al-Furqan",
+            "26. Asy-Syu'ara'", "27. An-Naml", "28. Al-Qasas", "29. Al-'Ankabut", "30. Ar-Rum",
+            "31. Luqman", "32. As-Sajdah", "33. Al-Ahzab", "34. Saba'", "35. Fatir",
+            "36. Yasin", "37. As-Saffat", "38. Sad", "39. Az-Zumar", "40. Ghafir",
+            "41. Fussilat", "42. Asy-Syura", "43. Az-Zukhruf", "44. Ad-Dukhan", "45. Al-Jatsiyah",
+            "46. Al-Ahqaf", "47. Muhammad", "48. Al-Fath", "49. Al-Hujurat", "50. Qaf",
+            "51. Az-Zariyat", "52. At-Tur", "53. An-Najm", "54. Al-Qamar", "55. Ar-Rahman",
+            "56. Al-Waqi'ah", "57. Al-Hadid", "58. Al-Mujadilah", "59. Al-Hasyr", "60. Al-Mumtahanah",
+            "61. As-Saff", "62. Al-Jumu'ah", "63. Al-Munafiqun", "64. At-Taghabun", "65. At-Talaq",
+            "66. At-Tahrim", "67. Al-Mulk", "68. Al-Qalam", "69. Al-Haqqah", "70. Al-Ma'arij",
+            "71. Nuh", "72. Al-Jinn", "73. Al-Muzzammil", "74. Al-Muddassir", "75. Al-Qiyamah",
+            "76. Al-Insan", "77. Al-Mursalat", "78. An-Naba'", "79. An-Nazi'at", "80. 'Abasa",
+            "81. At-Takwir", "82. Al-Infitar", "83. Al-Muthaffifin", "84. Al-Insyiqaq", "85. Al-Buruj",
+            "86. At-Tariq", "87. Al-A'la", "88. Al-Ghasyiyah", "89. Al-Fajr", "90. Al-Balad",
+            "91. Asy-Syams", "92. Al-Lail", "93. Ad-Duha", "94. Asy-Syarh", "95. At-Tin",
+            "96. Al-'Alaq", "97. Al-Qadr", "98. Al-Bayyinah", "99. Az-Zalzalah", "100. Al-'Adiyat",
+            "101. Al-Qari'ah", "102. At-Takasur", "103. Al-'Asr", "104. Al-Humazah", "105. Al-Fil",
+            "106. Quraisy", "107. Al-Ma'un", "108. Al-Kautsar", "109. Al-Kafirun", "110. An-Nasr",
+            "111. Al-Lahab", "112. Al-Ikhlas", "113. Al-Falaq", "114. An-Nas"
+        ];
+        var globDaftarSurat = DAFTAR_114_SURAT.slice();
         var globMasterKelas = [];
         var globMasterQuran = [];
         var autoFillTimer = null;
@@ -3365,9 +3392,32 @@
         var trendChartInstance = null;
         var categoryChartInstance = null;
 
+        // Helper Isolasi Musyrif Client-Side
+        function cleanMusyrifName(str) {
+            if (!str) return "";
+            var s = String(str).toLowerCase().trim();
+            s = s.replace(/\b(ustadz|ustad|ust|guru|bpk|bapak|kyai|teungku|tengku|kak)\b\.?/gi, " ").trim();
+            s = s.replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+            return s;
+        }
+
+        function isMusyrifMatchClient(santriMusyrif, userObj) {
+            if (!userObj || String(userObj.role).toLowerCase() === 'admin') return true;
+            if (!santriMusyrif) return false;
+            var smClean = cleanMusyrifName(santriMusyrif);
+            var uName = cleanMusyrifName(userObj.nama || '');
+            var uUser = cleanMusyrifName(userObj.user || '');
+            if (!smClean) return false;
+            if (smClean === uName || smClean === uUser) return true;
+            if (uName && smClean && (uName.indexOf(smClean) !== -1 || smClean.indexOf(uName) !== -1)) return true;
+            if (uUser && smClean && (uUser.indexOf(smClean) !== -1 || smClean.indexOf(uUser) !== -1)) return true;
+            return false;
+        }
+
         window.onload = function () {
             initPWAModule();
             renderDropdownJuz();
+            renderDropdownSurat();
 
             var todayString = getTodayWIB();
             document.getElementById('dlTglStart').value = todayString;
@@ -3375,8 +3425,21 @@
             document.getElementById('tglFilter').value = todayString;
             document.getElementById('inpDate').value = todayString;
 
-            // PERFORMANCE: Load from cache instantly
-            loadFromCache();
+            // Load saved session if exists
+            var s = localStorage.getItem(KEY);
+            if (s) {
+                try { curUser = JSON.parse(s); } catch (e) { curUser = null; }
+                if (curUser) {
+                    bukaDashboard();
+                    // PERFORMANCE: Load from cache scoped to current user
+                    loadFromCache();
+                    initApp();
+                } else {
+                    initApp();
+                }
+            } else {
+                initApp();
+            }
 
             // Event listeners untuk auto-fill halaman dari Master_Quran (Form Utama & Edit Modal)
             var elSuratAwal = document.getElementById('suratAwal');
@@ -3394,38 +3457,43 @@
             if (elEditSurat) elEditSurat.addEventListener('input', function () { autoFillEditHalaman(); });
             if (elEditAyat1) elEditAyat1.addEventListener('input', function () { autoFillEditHalaman(); });
             if (elEditAyat2) elEditAyat2.addEventListener('input', function () { autoFillEditHalaman(); });
-
-            var s = localStorage.getItem(KEY);
-            if (s) {
-                curUser = JSON.parse(s);
-                if (curUser) {
-                    bukaDashboard();
-                    // Background sync after UI is ready
-                    initApp();
-                }
-            } else {
-                // If login page, still need settings for branding
-                initApp();
-            }
         };
 
-        // CACHE LOADING FOR INSTANT START (SATSET)
+        // CACHE LOADING FOR INSTANT START (USER-SCOPED & SAFE)
         function loadFromCache() {
             var s = localStorage.getItem('mutabaah_settings');
             if (s) {
                 try { renderSettings(JSON.parse(s)); } catch (e) { }
             }
-            var t = localStorage.getItem('mutabaah_santri');
+            
+            // Scoped santri cache per user to prevent Musyrif A from seeing Musyrif B / Admin data on shared laptop
+            var userKey = (curUser && curUser.user) ? 'mutabaah_santri_' + curUser.user : null;
+            var t = userKey ? localStorage.getItem(userKey) : null;
             if (t) {
-                try { renderSantriList(JSON.parse(t)); } catch (e) { }
+                try {
+                    var santriParsed = JSON.parse(t);
+                    if (curUser && String(curUser.role).toLowerCase() !== 'admin') {
+                        santriParsed = santriParsed.filter(function(x) {
+                            return isMusyrifMatchClient(typeof x === 'object' ? x.musyrif : '', curUser);
+                        });
+                    }
+                    renderSantriList(santriParsed);
+                } catch (e) { }
             }
+            
             var sur = localStorage.getItem('mutabaah_surahs');
             if (sur) {
                 try {
-                    globDaftarSurat = JSON.parse(sur);
+                    var parsedSur = JSON.parse(sur);
+                    if (Array.isArray(parsedSur) && parsedSur.length >= 114) {
+                        globDaftarSurat = parsedSur;
+                    }
                     renderDropdownSurat();
                 } catch (e) { }
+            } else {
+                renderDropdownSurat();
             }
+
             var tar = localStorage.getItem('mutabaah_targets');
             if (tar) {
                 try { globTargetList = JSON.parse(tar); } catch (e) { }
@@ -3443,11 +3511,17 @@
                     google.script.run.withSuccessHandler(function (res) {
                         if (res && !res.error) {
                             if (res.santri) {
-                                globSantriList = res.santri;
-                                localStorage.setItem('mutabaah_santri_data', JSON.stringify(res.santri));
+                                var sData = res.santri;
+                                if (curUser && String(curUser.role).toLowerCase() !== 'admin') {
+                                    sData = sData.filter(function(x) { return isMusyrifMatchClient(x.musyrif, curUser); });
+                                }
+                                globSantriList = sData;
+                                if (curUser && curUser.user) {
+                                    localStorage.setItem('mutabaah_santri_' + curUser.user, JSON.stringify(sData));
+                                }
                                 var formSec = document.getElementById('formSection');
                                 if (!formSec || formSec.classList.contains('d-none')) {
-                                    renderSantriList(res.santri);
+                                    renderSantriList(sData);
                                 }
                             }
                             if (res.targets) { globTargetList = res.targets; localStorage.setItem('mutabaah_targets', JSON.stringify(res.targets)); }
@@ -3484,10 +3558,20 @@
             google.script.run.withSuccessHandler(function (res) {
                 if (res.error) return console.error("Init Error:", res.error);
 
-                // Save to cache
+                // Save to cache (user-scoped santri)
                 if (res.settings) localStorage.setItem('mutabaah_settings', JSON.stringify(res.settings));
-                if (res.santri) localStorage.setItem('mutabaah_santri', JSON.stringify(res.santri));
-                if (res.surahs) localStorage.setItem('mutabaah_surahs', JSON.stringify(res.surahs));
+                if (res.santri && curUser && curUser.user) {
+                    var sData = res.santri;
+                    if (String(curUser.role).toLowerCase() !== 'admin') {
+                        sData = sData.filter(function(x) { return isMusyrifMatchClient(x.musyrif, curUser); });
+                    }
+                    localStorage.setItem('mutabaah_santri_' + curUser.user, JSON.stringify(sData));
+                    globSantriList = sData;
+                }
+                if (res.surahs && Array.isArray(res.surahs) && res.surahs.length >= 114) {
+                    localStorage.setItem('mutabaah_surahs', JSON.stringify(res.surahs));
+                    globDaftarSurat = res.surahs;
+                }
                 if (res.targets) {
                     localStorage.setItem('mutabaah_targets', JSON.stringify(res.targets));
                     globTargetList = res.targets;
@@ -3503,11 +3587,8 @@
 
                 // Update UI (Silent background update if already loaded from cache)
                 if (res.settings) renderSettings(res.settings);
-                if (res.santri) renderSantriList(res.santri);
-                if (res.surahs) {
-                    globDaftarSurat = res.surahs;
-                    renderDropdownSurat();
-                }
+                if (res.santri) renderSantriList(globSantriList);
+                renderDropdownSurat();
                 loadDaftarKategoriAbsensi();
                 loadDaftarTargetHafalan();
                 if (typeof updateSemuaDropdownKelas === 'function') updateSemuaDropdownKelas();
@@ -3521,7 +3602,12 @@
         function normalizeSurat(str) {
             if (!str) return "";
             var s = String(str).toLowerCase().trim();
+            // Hapus nomor urut di depan nama surat (misal "1. ", "114. ")
+            s = s.replace(/^\d+[\s\.\-_:]*/, "").trim();
+            // Hapus prefix umum surat
             s = s.replace(/^(?:q\.?s\.?|sura[th]?|quran sura[th]?)\s*(?:-|_|\s)*\s*/i, "").trim();
+            
+            // Variasi khusus yang sering berbeda ejaannya
             if (s.indexOf("lahab") !== -1 || s.indexOf("masad") !== -1) return "almasad";
             if (s.indexOf("inshirah") !== -1 || s.indexOf("insyirah") !== -1 || s.indexOf("syarh") !== -1 || s.indexOf("alam nas") !== -1) return "alinsyirah";
             if (s.indexOf("isra") !== -1 || s.indexOf("bani israil") !== -1) return "alisra";
@@ -3529,7 +3615,20 @@
             if (s.indexOf("ghafir") !== -1 || s.indexOf("mumin") !== -1) return "almumin";
             if (s.indexOf("fushilat") !== -1 || s.indexOf("fussilat") !== -1 || s.indexOf("ha mim") !== -1) return "fushilat";
             if (s.indexOf("imran") !== -1) return "aliimran";
+            if (s.indexOf("insan") !== -1 || s.indexOf("dahr") !== -1) return "alinsan";
+            if (s.indexOf("zalzalah") !== -1 || s.indexOf("zilzal") !== -1) return "alzalzalah";
+            if (s.indexOf("kautsar") !== -1 || s.indexOf("kausar") !== -1) return "alkautsar";
+            if (s.indexOf("jatsiyah") !== -1 || s.indexOf("jasiyah") !== -1) return "aljatsiyah";
+            if (s.indexOf("takatsur") !== -1 || s.indexOf("takasur") !== -1) return "altakatsur";
+            if (s.indexOf("syams") !== -1 || s.indexOf("shams") !== -1) return "asyams";
+            if (s.indexOf("bayyinah") !== -1 || s.indexOf("bayinah") !== -1) return "albayyinah";
+            if (s.indexOf("buruj") !== -1 || s.indexOf("burooj") !== -1) return "alburuj";
+            if (s.indexOf("tariq") !== -1 || s.indexOf("thoriq") !== -1) return "attariq";
+            if (s.indexOf("ghasyiyah") !== -1 || s.indexOf("ghasiyah") !== -1) return "alghasyiyah";
+            
+            // Standardisasi transliterasi huruf
             s = s.replace(/sh/g, "sy").replace(/th/g, "t").replace(/ts/g, "t").replace(/dz/g, "z").replace(/dh/g, "z").replace(/oo/g, "u").replace(/ee/g, "i");
+            // Hapus karakter non-alfanumerik
             s = s.replace(/[^a-z0-9]/g, "").replace(/([a-z0-9])\1+/g, "$1").replace(/([aiueo])h$/i, "$1");
             return s;
         }
@@ -4278,8 +4377,24 @@
                 confirmButtonText: 'Ya, Keluar'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    localStorage.removeItem(KEY);
+                    // Bersihkan seluruh cache pengguna agar tidak bocor ke akun musyrif lain di perangkat yang sama
+                    try {
+                        var keysToRemove = [];
+                        for (var i = 0; i < localStorage.length; i++) {
+                            var k = localStorage.key(i);
+                            if (k && (k.indexOf('mutabaah_santri') === 0 || k === KEY || k.indexOf('dash_stats_') === 0 || k.indexOf('mutabaah_riwayat') === 0)) {
+                                keysToRemove.push(k);
+                            }
+                        }
+                        keysToRemove.forEach(function(k) { localStorage.removeItem(k); });
+                        sessionStorage.clear();
+                    } catch(e) {}
+                    
                     curUser = null;
+                    globSantriList = [];
+                    globDashProgresList = [];
+                    allSantriData = [];
+                    
                     document.getElementById('page-dashboard').classList.add('hidden');
                     document.getElementById('page-login').style.display = 'flex';
                     document.getElementById('u').value = '';
@@ -4858,22 +4973,31 @@
             juzS.innerHTML = '';
             juzE.innerHTML = '';
             
-            var allowedJuz = [];
+            var targetJuzList = [];
             if (filterTargetStr) {
                 var tTrim = String(filterTargetStr).trim().toLowerCase();
                 var mJ = tTrim.match(/juz\s*(\d+)(?:\s*s\/d\s*|\s*-\s*)?(\d+)?/i) || tTrim.match(/juz:(\d+)/i);
                 if (mJ && mJ[1]) {
                     var startJ = parseInt(mJ[1]);
                     var endJ = mJ[2] ? parseInt(mJ[2]) : startJ;
-                    for (var k = startJ; k <= endJ; k++) allowedJuz.push(k);
+                    for (var k = Math.min(startJ, endJ); k <= Math.max(startJ, endJ); k++) targetJuzList.push(k);
                 }
             }
             
+            // Seluruh 30 Juz SELALU tersedia di dropdown agar musyrif bisa input juz berapa saja tanpa terkunci!
             for (var i = 1; i <= 30; i++) {
-                if (allowedJuz.length === 0 || allowedJuz.includes(i)) {
-                    juzS.add(new Option('Juz ' + i, i)); 
-                    juzE.add(new Option('Juz ' + i, i));
+                var label = 'Juz ' + i;
+                if (targetJuzList.includes(i)) {
+                    label += ' 🎯 (Target)';
                 }
+                juzS.add(new Option(label, i)); 
+                juzE.add(new Option(label, i));
+            }
+
+            // Jika ada target, pilih secara default Juz target
+            if (targetJuzList.length > 0) {
+                juzS.value = targetJuzList[0];
+                juzE.value = targetJuzList[targetJuzList.length - 1];
             }
         }
 
@@ -4908,64 +5032,87 @@
                     if (jsAwal) jsAwal.add(new Option(x, x));
                     if (jsAkhir) jsAkhir.add(new Option(x, x));
                 });
-            } else {
-                if (globDaftarSurat.length === 0) {
-                    if (sAwal) sAwal.add(new Option("Loading...", ""));
-                    if (sAkhir) sAkhir.add(new Option("Loading...", ""));
-                    if (jsAwal) jsAwal.add(new Option("Loading...", ""));
-                    if (jsAkhir) jsAkhir.add(new Option("Loading...", ""));
-                } else {
-                    var allowedSurahs = [];
-                    if (filterTargetStr) {
-                        var tTrim = String(filterTargetStr).trim().toLowerCase();
-                        var mJ = tTrim.match(/juz\s*(\d+)(?:\s*s\/d\s*|\s*-\s*)?(\d+)?/i) || tTrim.match(/juz:(\d+)/i);
-                        var mS = tTrim.match(/surat:([^|]+)\|([^\s|]+)/i);
-                        
-                        if (mJ && mJ[1] && globMasterQuran && globMasterQuran.length > 0) {
-                            var startJ = parseInt(mJ[1]);
-                            var endJ = mJ[2] ? parseInt(mJ[2]) : startJ;
-                            
-                            var minHal = 9999, maxHal = 0;
-                            for (var j = startJ; j <= endJ; j++) {
-                                var jR = getJuzRangeClient(j);
-                                if (jR) {
-                                    if (jR.start < minHal) minHal = jR.start;
-                                    if (jR.end > maxHal) maxHal = jR.end;
-                                }
-                            }
-                            
-                            if (minHal <= maxHal) {
-                                globMasterQuran.forEach(function(m) {
-                                    if (m.halaman >= minHal && m.halaman <= maxHal && m.surat) {
-                                        var matchedName = globDaftarSurat.find(function(ds) {
-                                            return isSuratMatch(ds, m.surat);
-                                        });
-                                        if (matchedName && allowedSurahs.indexOf(matchedName) === -1) {
-                                            allowedSurahs.push(matchedName);
-                                        }
-                                    }
-                                });
-                            }
-                        } else if (mS && mS[1] && mS[2]) {
-                            var idx1 = globDaftarSurat.findIndex(function(s) { return isSuratMatch(s, mS[1]); });
-                            var idx2 = globDaftarSurat.findIndex(function(s) { return isSuratMatch(s, mS[2]); });
-                            if (idx1 !== -1 && idx2 !== -1) {
-                                var minIdx = Math.min(idx1, idx2);
-                                var maxIdx = Math.max(idx1, idx2);
-                                allowedSurahs = globDaftarSurat.slice(minIdx, maxIdx + 1);
-                            }
+                return;
+            }
+
+            var surahList = (globDaftarSurat && globDaftarSurat.length > 0) ? globDaftarSurat : DAFTAR_114_SURAT;
+
+            var targetSurahs = [];
+            var targetLabel = "";
+
+            if (filterTargetStr) {
+                var tTrim = String(filterTargetStr).trim().toLowerCase();
+                var mJ = tTrim.match(/juz\s*(\d+)(?:\s*s\/d\s*|\s*-\s*)?(\d+)?/i) || tTrim.match(/juz:(\d+)/i);
+                var mS = tTrim.match(/surat:([^|]+)\|([^\s|]+)/i) || tTrim.match(/surah:([^|]+)\|([^\s|]+)/i);
+                
+                if (mJ && mJ[1] && globMasterQuran && globMasterQuran.length > 0) {
+                    var startJ = parseInt(mJ[1]);
+                    var endJ = mJ[2] ? parseInt(mJ[2]) : startJ;
+                    targetLabel = (startJ === endJ) ? ("Juz " + startJ) : ("Juz " + startJ + " - " + endJ);
+                    
+                    var minHal = 9999, maxHal = 0;
+                    for (var j = Math.min(startJ, endJ); j <= Math.max(startJ, endJ); j++) {
+                        var jR = getJuzRangeClient(j);
+                        if (jR) {
+                            if (jR.start < minHal) minHal = jR.start;
+                            if (jR.end > maxHal) maxHal = jR.end;
                         }
                     }
-
-                    globDaftarSurat.forEach(function (x) {
-                        if (allowedSurahs.length === 0 || allowedSurahs.indexOf(x) !== -1) {
-                            if (sAwal) sAwal.add(new Option(x, x));
-                            if (sAkhir) sAkhir.add(new Option(x, x));
-                            if (jsAwal) jsAwal.add(new Option(x, x));
-                            if (jsAkhir) jsAkhir.add(new Option(x, x));
-                        }
-                    });
+                    
+                    if (minHal <= maxHal) {
+                        globMasterQuran.forEach(function(m) {
+                            if (m.halaman >= minHal && m.halaman <= maxHal && m.surat) {
+                                var matchedName = surahList.find(function(ds) {
+                                    return isSuratMatch(ds, m.surat);
+                                });
+                                if (matchedName && targetSurahs.indexOf(matchedName) === -1) {
+                                    targetSurahs.push(matchedName);
+                                }
+                            }
+                        });
+                    }
+                } else if (mS && mS[1] && mS[2]) {
+                    targetLabel = mS[1] + " s/d " + mS[2];
+                    var idx1 = surahList.findIndex(function(s) { return isSuratMatch(s, mS[1]); });
+                    var idx2 = surahList.findIndex(function(s) { return isSuratMatch(s, mS[2]); });
+                    if (idx1 !== -1 && idx2 !== -1) {
+                        var minIdx = Math.min(idx1, idx2);
+                        var maxIdx = Math.max(idx1, idx2);
+                        targetSurahs = surahList.slice(minIdx, maxIdx + 1);
+                    }
                 }
+            }
+
+            // Jika ada filter target hafalan, kelompokkan target surah di optgroup teratas untuk kemudahan,
+            // DAN SELURUH 114 SURAT tetap tersedia di optgroup bawah agar musyrif fleksibel & tidak terkunci!
+            var selects = [sAwal, sAkhir, jsAwal, jsAkhir].filter(function(el) { return el !== null; });
+
+            if (targetSurahs.length > 0) {
+                selects.forEach(function(sel) {
+                    var optGroupTarget = document.createElement('optgroup');
+                    optGroupTarget.label = "🎯 Target Hafalan (" + targetLabel + ")";
+                    targetSurahs.forEach(function(x) {
+                        optGroupTarget.appendChild(new Option(x, x));
+                    });
+                    sel.appendChild(optGroupTarget);
+
+                    var optGroupAll = document.createElement('optgroup');
+                    optGroupAll.label = "📖 Seluruh Surat Al-Qur'an (1 - 114)";
+                    surahList.forEach(function(x) {
+                        optGroupAll.appendChild(new Option(x, x));
+                    });
+                    sel.appendChild(optGroupAll);
+                });
+                if (sAwal) sAwal.value = targetSurahs[0];
+                if (sAkhir) sAkhir.value = targetSurahs[0];
+                if (jsAwal) jsAwal.value = targetSurahs[0];
+                if (jsAkhir) jsAkhir.value = targetSurahs[0];
+            } else {
+                selects.forEach(function(sel) {
+                    surahList.forEach(function(x) {
+                        sel.add(new Option(x, x));
+                    });
+                });
             }
         }
 
@@ -5167,10 +5314,13 @@
             // 3. Tarik data santri dan progres terbaru secara langsung dari server
             google.script.run.withSuccessHandler(function(data) {
                 if (data && Array.isArray(data)) {
-                    // Simpan ke memory dan localStorage agar seluruh fitur sinkron
-                    localStorage.setItem('mutabaah_santri', JSON.stringify(data));
+                    // Simpan ke memory dan localStorage scoped ke user agar seluruh fitur sinkron tanpa bocor ke akun lain
+                    if (curUser && curUser.user) {
+                        localStorage.setItem('mutabaah_santri_' + curUser.user, JSON.stringify(data));
+                    }
                     allSantriData = data;
                     globDashProgresList = data;
+                    globSantriList = data;
                     
                     // Re-render daftar santri untuk input setoran
                     if (typeof renderSantriList === 'function') renderSantriList(data);
@@ -5602,7 +5752,8 @@
 
             var allSantri = globSantriList && globSantriList.length ? globSantriList : [];
             if (!allSantri.length) {
-                try { allSantri = JSON.parse(localStorage.getItem('mutabaah_santri') || '[]'); } catch(e){}
+                var userKey = (curUser && curUser.user) ? 'mutabaah_santri_' + curUser.user : 'mutabaah_santri';
+                try { allSantri = JSON.parse(localStorage.getItem(userKey) || '[]'); } catch(e){}
             }
             var santriData = allSantri.find(s => String(s.nama).trim().toLowerCase() === String(x.nama).trim().toLowerCase());
             var noWa = santriData && santriData.noWaWali ? String(santriData.noWaWali).replace(/[^0-9]/g, '') : '';
@@ -7432,6 +7583,7 @@
             var progres = document.getElementById('adminFilterProgres') ? document.getElementById('adminFilterProgres').value : 'SEMUA';
 
             return (globSantriList || []).filter(s => {
+                if (curUser && String(curUser.role).toLowerCase() !== 'admin' && !isMusyrifMatchClient(s.musyrif, curUser)) return false;
                 if (kelas !== 'SEMUA' && String(s.kelas || '').trim() !== kelas.trim()) return false;
                 if (search && !String(s.nama || '').toLowerCase().includes(search) && !String(s.kelas || '').toLowerCase().includes(search)) return false;
                 
@@ -7463,7 +7615,14 @@
             var requestRole = curUser ? String(curUser.role).toLowerCase() : '';
 
             google.script.run.withSuccessHandler(function (data) {
-                globSantriList = data || [];
+                var cleanData = data || [];
+                if (curUser && String(curUser.role).toLowerCase() !== 'admin') {
+                    cleanData = cleanData.filter(function(s) { return isMusyrifMatchClient(s.musyrif, curUser); });
+                }
+                globSantriList = cleanData;
+                if (curUser && curUser.user) {
+                    localStorage.setItem('mutabaah_santri_' + curUser.user, JSON.stringify(cleanData));
+                }
                 populateFilterKelasOptions(globSantriList);
                 renderDaftarSantri(getFilteredSantriList());
             }).withFailureHandler(function (error) {
@@ -7708,10 +7867,14 @@
         var pageSizeDash = 10;
 
         function initDashProgres() {
-            var cached = localStorage.getItem('mutabaah_santri');
+            var userKey = (curUser && curUser.user) ? 'mutabaah_santri_' + curUser.user : null;
+            var cached = userKey ? localStorage.getItem(userKey) : null;
             if (cached && (!globDashProgresList || !globDashProgresList.length)) {
                 try {
                     var parsed = JSON.parse(cached);
+                    if (curUser && String(curUser.role).toLowerCase() !== 'admin') {
+                        parsed = parsed.filter(function(s) { return isMusyrifMatchClient(s.musyrif, curUser); });
+                    }
                     globDashProgresList = parsed;
                     populateFilterKelasOptions(parsed);
                     filterDashProgres();
@@ -7721,10 +7884,14 @@
             if (!curUser || !curUser.user) return;
             var reqRole = curUser ? String(curUser.role).toLowerCase() : '';
             google.script.run.withSuccessHandler(function (data) {
-                globDashProgresList = data || [];
+                var cleanData = data || [];
+                if (curUser && String(curUser.role).toLowerCase() !== 'admin') {
+                    cleanData = cleanData.filter(function(s) { return isMusyrifMatchClient(s.musyrif, curUser); });
+                }
+                globDashProgresList = cleanData;
                 if (data && Array.isArray(data)) {
-                    localStorage.setItem('mutabaah_santri', JSON.stringify(data));
-                    allSantriData = data;
+                    if (userKey) localStorage.setItem(userKey, JSON.stringify(cleanData));
+                    allSantriData = cleanData;
                 }
                 populateFilterKelasOptions(globDashProgresList);
                 filterDashProgres();
@@ -7742,6 +7909,7 @@
             var status = document.getElementById('dashFilterStatus') ? document.getElementById('dashFilterStatus').value : 'SEMUA';
 
             return (globDashProgresList || []).filter(s => {
+                if (curUser && String(curUser.role).toLowerCase() !== 'admin' && !isMusyrifMatchClient(s.musyrif, curUser)) return false;
                 if (kelas !== 'SEMUA' && String(s.kelas || '').trim() !== kelas.trim()) return false;
                 if (search && !String(s.nama || '').toLowerCase().includes(search)) return false;
                 
@@ -7770,6 +7938,7 @@
 
             // Hitung statistik berdasarkan filter Kelas dan Pencarian (tanpa dibatasi status progres agar kartu statistik menampilkan perbandingan seimbang)
             var baseFiltered = (globDashProgresList || []).filter(s => {
+                if (curUser && String(curUser.role).toLowerCase() !== 'admin' && !isMusyrifMatchClient(s.musyrif, curUser)) return false;
                 if (kelas !== 'SEMUA' && String(s.kelas || '').trim() !== kelas.trim()) return false;
                 if (search && !String(s.nama || '').toLowerCase().includes(search)) return false;
                 return true;
@@ -8258,7 +8427,7 @@
                             // Optimistic UI Update
                             if (typeof globSantriList !== 'undefined') {
                                 globSantriList = globSantriList.filter(s => String(s.row) !== String(row));
-                                localStorage.setItem('mutabaah_santri', JSON.stringify(globSantriList));
+                                if (curUser && curUser.user) localStorage.setItem('mutabaah_santri_' + curUser.user, JSON.stringify(globSantriList));
                                 renderDaftarSantri(getFilteredSantriList());
                                 renderSantriList(globSantriList);
                             } else {
@@ -8341,7 +8510,19 @@
                     var msg = res.includes(':') ? res.split(':')[1].trim() : 'Data santri diupdate';
                     Swal.fire('Berhasil', msg, 'success');
                     tutupModalEditSantri();
-                    loadDaftarSantri();
+                    
+                    var item = globSantriList.find(x => x.row == editSantriRow);
+                    if (item) {
+                        item.nama = n;
+                        item.kelas = k;
+                        item.musyrif = m;
+                        if (p) item.password = p;
+                        item.target = t;
+                        item.noWaWali = wa;
+                        item.usernameWali = uw;
+                        if (curUser && curUser.user) localStorage.setItem('mutabaah_santri_' + curUser.user, JSON.stringify(globSantriList));
+                    }
+                    loadDaftarSantri(true);
                 } else {
                     Swal.fire('Gagal', res, 'error');
                 }
@@ -8472,22 +8653,30 @@
                             musyrif: musyrif,
                             password: pass,
                             target: target,
+                            noWaWali: wa,
+                            usernameWali: uw,
                             row: newRow
                         };
                         globSantriList.push(newSantri);
-                        localStorage.setItem('mutabaah_santri', JSON.stringify(globSantriList));
+                        if (curUser && curUser.user) localStorage.setItem('mutabaah_santri_' + curUser.user, JSON.stringify(globSantriList));
                         renderDaftarSantri(getFilteredSantriList());
                         renderSantriList(globSantriList);
                     } else {
-                        loadDaftarSantri();
+                        loadDaftarSantri(true);
                         google.script.run.withSuccessHandler(function (data) {
-                            if (data.santri) localStorage.setItem('mutabaah_santri', JSON.stringify(data.santri));
+                            if (data.santri && curUser && curUser.user) {
+                                var sData = data.santri;
+                                if (String(curUser.role).toLowerCase() !== 'admin') {
+                                    sData = sData.filter(function(x) { return isMusyrifMatchClient(x.musyrif, curUser); });
+                                }
+                                localStorage.setItem('mutabaah_santri_' + curUser.user, JSON.stringify(sData));
+                            }
                         }).getInitialData(curUser.user, curUser.role);
                     }
                 } else {
                     Swal.fire('Gagal', res, 'error');
                 }
-            }).tambahSantri(nama, kelas, musyrif, pass, target);
+            }).tambahSantri(nama, kelas, musyrif, pass, target, wa, uw);
         }
 
         // --- TAMBAH USER ---

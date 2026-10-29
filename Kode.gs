@@ -16,21 +16,52 @@ function loginUser(u, p) {
   return "GAGAL|Cek Username/Password";
 }
 
+// Helper membersihkan gelar / honorifik musyrif untuk pencocokan nama
+function cleanMusyrifName(str) {
+  if (!str) return "";
+  var s = String(str).toLowerCase().trim();
+  s = s.replace(/\b(ustadz|ustad|ust|guru|bpk|bapak|kyai|teungku|tengku|kak)\b\.?/gi, " ").trim();
+  s = s.replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  return s;
+}
+
+// Helper Format Nomor WA ke +62
+function formatNomorWA(no) {
+  if (!no) return "";
+  var n = String(no).trim().replace(/[^0-9+]/g, "");
+  if (!n) return "";
+  if (n.startsWith("+62")) return n;
+  if (n.startsWith("62")) return "+" + n;
+  if (n.startsWith("0")) return "+62" + n.substring(1);
+  if (n.startsWith("8")) return "+62" + n;
+  return n;
+}
+
 // Helper untuk menterjemahkan identifier musyrif (bisa berupa username atau nama lengkap) ke dalam array alias
 function getMusyrifAliases(identifier) {
   if (!identifier) return [];
   var identTrim = String(identifier).trim().toLowerCase();
   var aliases = [identTrim];
+  var normIdent = cleanMusyrifName(identTrim);
+  if (normIdent && aliases.indexOf(normIdent) === -1) aliases.push(normIdent);
+
   try {
     var s = getSheet('Data_User');
     if (s && s.getLastRow() >= 2) {
-      var d = s.getRange(2, 1, s.getLastRow()-1, 3).getValues(); // col A=username, col C=nama
+      var d = s.getRange(2, 1, s.getLastRow()-1, 4).getValues(); // col A=username, col C=nama, col D=role
       for (var i = 0; i < d.length; i++) {
         var usr = String(d[i][0] || '').trim().toLowerCase();
         var nm = String(d[i][2] || '').trim().toLowerCase();
-        if (usr === identTrim || nm === identTrim) {
+        var normUsr = cleanMusyrifName(usr);
+        var normNm = cleanMusyrifName(nm);
+
+        var isMatch = (usr === identTrim || nm === identTrim || 
+                       (normIdent && (normUsr === normIdent || normNm === normIdent)));
+        if (isMatch) {
           if (usr && aliases.indexOf(usr) === -1) aliases.push(usr);
           if (nm && aliases.indexOf(nm) === -1) aliases.push(nm);
+          if (normUsr && aliases.indexOf(normUsr) === -1) aliases.push(normUsr);
+          if (normNm && aliases.indexOf(normNm) === -1) aliases.push(normNm);
         }
       }
     }
@@ -39,29 +70,108 @@ function getMusyrifAliases(identifier) {
 }
 
 function matchUserOrMusyrif(targetStr, aliases) {
-  if (!targetStr || !aliases) return false;
-  var clean = String(targetStr).trim().toLowerCase();
-  return aliases.indexOf(clean) !== -1;
+  if (!targetStr || !aliases || !aliases.length) return false;
+  var cleanTarget = String(targetStr).trim().toLowerCase();
+  var normTarget = cleanMusyrifName(cleanTarget);
+  if (!normTarget && !cleanTarget) return false;
+
+  for (var i = 0; i < aliases.length; i++) {
+    var a = String(aliases[i]).trim().toLowerCase();
+    if (!a) continue;
+    if (cleanTarget === a) return true;
+    var normA = cleanMusyrifName(a);
+    if (normA && normTarget) {
+      if (normTarget === normA) return true;
+      if (normTarget.length >= 4 && normA.length >= 4) {
+        if (normTarget.indexOf(normA) !== -1 || normA.indexOf(normTarget) !== -1) return true;
+      }
+    }
+  }
+  return false;
 }
+
+// Master 114 Surat Al-Qur'an lengkap dan berurutan
+var DAFTAR_114_SURAT = [
+  "Al-Fatihah", "Al-Baqarah", "Ali 'Imran", "An-Nisa'", "Al-Ma'idah",
+  "Al-An'am", "Al-A'raf", "Al-Anfal", "At-Taubah", "Yunus",
+  "Hud", "Yusuf", "Ar-Ra'd", "Ibrahim", "Al-Hijr",
+  "An-Nahl", "Al-Isra'", "Al-Kahf", "Maryam", "Taha",
+  "Al-Anbiya'", "Al-Hajj", "Al-Mu'minun", "An-Nur", "Al-Furqan",
+  "Asy-Syu'ara'", "An-Naml", "Al-Qasas", "Al-'Ankabut", "Ar-Rum",
+  "Luqman", "As-Sajdah", "Al-Ahzab", "Saba'", "Fatir",
+  "Yasin", "As-Saffat", "Sad", "Az-Zumar", "Ghafir",
+  "Fussilat", "Asy-Syura", "Az-Zukhruf", "Ad-Dukhan", "Al-Jatsiyah",
+  "Al-Ahqaf", "Muhammad", "Al-Fath", "Al-Hujurat", "Qaf",
+  "Az-Zariyat", "At-Tur", "An-Najm", "Al-Qamar", "Ar-Rahman",
+  "Al-Waqi'ah", "Al-Hadid", "Al-Mujadilah", "Al-Hasyr", "Al-Mumtahanah",
+  "As-Saff", "Al-Jumu'ah", "Al-Munafiqun", "At-Taghabun", "At-Talaq",
+  "At-Tahrim", "Al-Mulk", "Al-Qalam", "Al-Haqqah", "Al-Ma'arij",
+  "Nuh", "Al-Jinn", "Al-Muzzammil", "Al-Muddassir", "Al-Qiyamah",
+  "Al-Insan", "Al-Mursalat", "An-Naba'", "An-Nazi'at", "'Abasa",
+  "At-Takwir", "Al-Infitar", "Al-Muthaffifin", "Al-Insyiqaq", "Al-Buruj",
+  "At-Tariq", "Al-A'la", "Al-Ghasyiyah", "Al-Fajr", "Al-Balad",
+  "Asy-Syams", "Al-Lail", "Ad-Duha", "Asy-Syarh", "At-Tin",
+  "Al-'Alaq", "Al-Qadr", "Al-Bayyinah", "Az-Zalzalah", "Al-'Adiyat",
+  "Al-Qari'ah", "At-Takasur", "Al-'Asr", "Al-Humazah", "Al-Fil",
+  "Quraisy", "Al-Ma'un", "Al-Kautsar", "Al-Kafirun", "An-Nasr",
+  "Al-Lahab", "Al-Ikhlas", "Al-Falaq", "An-Nas"
+];
+
+// Pemetaan daftar surat per Juz untuk validasi dan filtering yang akurat
+var SURAT_DALAM_JUZ = {
+  30: [
+    "An-Naba'", "An-Nazi'at", "'Abasa", "At-Takwir", "Al-Infitar", 
+    "Al-Muthaffifin", "Al-Insyiqaq", "Al-Buruj", "At-Tariq", "Al-A'la", 
+    "Al-Ghasyiyah", "Al-Fajr", "Al-Balad", "Asy-Syams", "Al-Lail", 
+    "Ad-Duha", "Asy-Syarh", "At-Tin", "Al-'Alaq", "Al-Qadr", 
+    "Al-Bayyinah", "Az-Zalzalah", "Al-'Adiyat", "Al-Qari'ah", "At-Takasur", 
+    "Al-'Asr", "Al-Humazah", "Al-Fil", "Quraisy", "Al-Ma'un", 
+    "Al-Kautsar", "Al-Kafirun", "An-Nasr", "Al-Lahab", "Al-Ikhlas", 
+    "Al-Falaq", "An-Nas"
+  ],
+  29: [
+    "Al-Mulk", "Al-Qalam", "Al-Haqqah", "Al-Ma'arij", "Nuh", 
+    "Al-Jinn", "Al-Muzzammil", "Al-Muddassir", "Al-Qiyamah", "Al-Insan", 
+    "Al-Mursalat"
+  ],
+  28: [
+    "Al-Mujadilah", "Al-Hasyr", "Al-Mumtahanah", "As-Saff", "Al-Jumu'ah", 
+    "Al-Munafiqun", "At-Taghabun", "At-Talaq", "At-Tahrim"
+  ]
+};
 
 // 2. AMBIL DATA SANTRI (WITH SERVER-SIDE SEARCH)
 function getListSantri(u, r, searchQuery) {
   const s = getSheet('Data_Santri');
   if(s.getLastRow() < 2) return [];
-  if(s.getMaxColumns() < 5) s.insertColumnsAfter(s.getMaxColumns(), 5 - s.getMaxColumns());
-  // Ambil 5 Kolom: Nama, Kelas, Musyrif, Password, Target
-  const d = s.getRange(2, 1, s.getLastRow()-1, 5).getValues();
+  if(s.getMaxColumns() < 7) s.insertColumnsAfter(s.getMaxColumns(), 7 - s.getMaxColumns());
+  
+  // Pastikan header kolom E, F, G rapi
+  try {
+    var hdr = s.getRange(1, 1, 1, 7).getValues()[0];
+    if (!hdr[4]) s.getRange(1, 5).setValue("Target");
+    if (!hdr[5]) s.getRange(1, 6).setValue("No WA Wali");
+    if (!hdr[6]) s.getRange(1, 7).setValue("Username Wali");
+  } catch(e) {}
+
+  // Ambil 7 Kolom: Nama, Kelas, Musyrif, Password, Target, No WA Wali, Username Wali
+  const numCols = Math.max(7, s.getLastColumn());
+  const d = s.getRange(2, 1, s.getLastRow()-1, numCols).getValues();
   
   let allData = d.map((row, i) => ({
-    nama: row[0], 
-    kelas: row[1], 
-    musyrif: row[2], 
-    target: row[4] || '', // Target ada di kolom E (Index 4)
+    nama: String(row[0] || '').trim(), 
+    kelas: String(row[1] || '').trim(), 
+    musyrif: String(row[2] || '').trim(), 
+    password: String(row[3] || '').trim(),
+    target: String(row[4] || '').trim(), 
+    noWaWali: String(row[5] || '').trim(),
+    usernameWali: String(row[6] || '').trim(),
     row: i + 2
   })).filter(x => x.nama);
 
   var roleSafety = String(r || '').toLowerCase();
-  if(roleSafety !== 'admin' && roleSafety !== '') {
+  // KEAMANAN FILTER: Hanya Admin yang melihat seluruh santri. Musyrif hanya melihat santri binaannya sendiri.
+  if(roleSafety !== 'admin') {
     var uAliases = getMusyrifAliases(u);
     allData = allData.filter(x => matchUserOrMusyrif(x.musyrif, uAliases));
   }
@@ -72,7 +182,9 @@ function getListSantri(u, r, searchQuery) {
     allData = allData.filter(x => 
       String(x.nama).toLowerCase().includes(q) || 
       String(x.kelas).toLowerCase().includes(q) ||
-      String(x.musyrif).toLowerCase().includes(q)
+      String(x.musyrif).toLowerCase().includes(q) ||
+      String(x.noWaWali).toLowerCase().includes(q) ||
+      String(x.usernameWali).toLowerCase().includes(q)
     );
   }
 
@@ -191,6 +303,86 @@ function getJuzRange(juzNum) {
   return null;
 }
 
+// Helper untuk menganalisis target Juz: mendukung single juz (Juz 29), rentang juz (Juz 29 s/d 30, Juz 28-30), maupun jumlah juz (2 Juz)
+function getMultiJuzInfo(str) {
+  if (!str) return null;
+  var s = String(str).trim();
+  var sLower = s.toLowerCase();
+
+  // 1. Cek rentang juz: "Juz 29 s/d 30", "Juz 29 - 30", "Juz 28 sampai 30", "Juz 1 s/d 3", dll
+  var mRange = sLower.match(/juz\s*(\d+)\s*(?:s\/d|-|sampai|hingga|&|,|\+)\s*(?:juz\s*)?(\d+)/i);
+  if (mRange && mRange[1] && mRange[2]) {
+    var j1 = parseInt(mRange[1]);
+    var j2 = parseInt(mRange[2]);
+    var startJ = Math.min(j1, j2);
+    var endJ = Math.max(j1, j2);
+    var allPages = {};
+    var totalHal = 0;
+    var surahsInMulti = {};
+
+    for (var j = startJ; j <= endJ; j++) {
+      var r = getJuzRange(j);
+      if (r) {
+        totalHal += r.totalHal;
+        for (var p = r.start; p <= r.end; p++) allPages[p] = true;
+      }
+      if (typeof SURAT_DALAM_JUZ !== 'undefined' && SURAT_DALAM_JUZ[j]) {
+        SURAT_DALAM_JUZ[j].forEach(function(srt) { surahsInMulti[normalizeSurat(srt)] = true; });
+      }
+    }
+    return {
+      type: 'range',
+      startJuz: startJ,
+      endJuz: endJ,
+      totalHal: totalHal,
+      pages: allPages,
+      suratMap: surahsInMulti,
+      nama: "Juz " + startJ + " s/d " + endJ
+    };
+  }
+
+  // 2. Cek jumlah Juz umum: "2 Juz", "3 Juz", "5 Juz"
+  var mCount = sLower.match(/(\d+)\s*juz/i);
+  if (mCount && mCount[1] && sLower.indexOf("juz 2") !== 0 && sLower.indexOf("juz 1") !== 0 && sLower.indexOf("juz 3") !== 0) {
+    var numCount = parseInt(mCount[1]);
+    if (numCount > 0 && numCount <= 30) {
+      return {
+        type: 'count',
+        totalHal: numCount * 20,
+        nama: numCount + " Juz",
+        pages: null,
+        suratMap: {}
+      };
+    }
+  }
+
+  // 3. Single Juz: "Juz 29", "JUZ:29", "Juz 30", dll
+  var mSingle = s.match(/JUZ:(\d+)/i) || sLower.match(/juz\s*(\d+)/i);
+  if (mSingle && mSingle[1]) {
+    var numJuz = parseInt(mSingle[1]);
+    var r = getJuzRange(numJuz);
+    if (r) {
+      var allPages = {};
+      for (var p = r.start; p <= r.end; p++) allPages[p] = true;
+      var surahsSingle = {};
+      if (typeof SURAT_DALAM_JUZ !== 'undefined' && SURAT_DALAM_JUZ[numJuz]) {
+        SURAT_DALAM_JUZ[numJuz].forEach(function(srt) { surahsSingle[normalizeSurat(srt)] = true; });
+      }
+      return {
+        type: 'single',
+        startJuz: numJuz,
+        endJuz: numJuz,
+        totalHal: r.totalHal,
+        pages: allPages,
+        suratMap: surahsSingle,
+        nama: r.nama
+      };
+    }
+  }
+
+  return null;
+}
+
 function kalkulasiProgressTarget(targetStr, stats, mqList) {
   var srtCount = stats.surahs ? stats.surahs.length : 0;
   var halCount = stats.hal || 0;
@@ -210,70 +402,94 @@ function kalkulasiProgressTarget(targetStr, stats, mqList) {
     return { persen: persen, tercapai: tercapai, sisa: sisa, surat: srtCount, hal: halCount, ayat: ayatCount };
   }
 
-  // 1. TERSTRUKTUR / HEURISTIK JUZ
+  // 1. TERSTRUKTUR / HEURISTIK JUZ (MENDUKUNG SINGLE JUZ MAUPUN MULTI-JUZ SEPERTI JUZ 29 S/D 30)
   if (tTrim.indexOf("JUZ:") === 0 || tLower.indexOf("juz") !== -1) {
-    var matchJuz = tTrim.match(/JUZ:(\d+)/i) || tLower.match(/juz\s*(\d+)/i);
-    if (matchJuz && matchJuz[1]) {
-      var numJuz = parseInt(matchJuz[1]);
-      var juzInfo = getJuzRange(numJuz);
-      if (juzInfo) {
-        // Bangun daftar surat yang BENAR-BENAR ada di Juz ini berdasarkan Master Quran
-        var suratDalamJuz = {};
-        if (mqList && mqList.length > 0) {
-          mqList.forEach(function(m) {
-            if (m.halaman >= juzInfo.start && m.halaman <= juzInfo.end && m.surat) {
-              suratDalamJuz[normalizeSurat(m.surat)] = true;
-            }
-          });
-        }
-        
-        var pagesDone = {};
-        // Filter: hanya hitung surat yang ADA di Juz target
-        var filteredSurahs = [];
-        setoranList.forEach(function(item) {
-          var itemSuratNorm = item.surat ? normalizeSurat(item.surat) : '';
-          var isInJuz = false;
-          
-          // Cek berdasarkan halaman
-          if (item.halAwal > 0 || item.halAkhir > 0) {
-            var ha = item.halAwal || item.halAkhir;
-            var hk = item.halAkhir || item.halAwal;
-            for (var p = Math.min(ha, hk); p <= Math.max(ha, hk); p++) {
-              if (p >= juzInfo.start && p <= juzInfo.end) {
-                pagesDone[p] = true;
-                isInJuz = true;
-              }
-            }
-          }
-          
-          // Cek berdasarkan nama surat (cocokkan dengan Master Quran)
-          if (!isInJuz && itemSuratNorm && suratDalamJuz[itemSuratNorm]) {
-            isInJuz = true;
-          }
-          
-          if (isInJuz && item.surat && item.surat !== '-' && item.surat !== '') {
-            if (filteredSurahs.indexOf(item.surat) === -1) filteredSurahs.push(item.surat);
+    var juzInfo = getMultiJuzInfo(tTrim);
+    if (juzInfo) {
+      // Gabungkan daftar surat dari Master_Quran sheet + pemetaan bawaan SURAT_DALAM_JUZ
+      var suratDalamJuz = Object.assign({}, juzInfo.suratMap || {});
+      if (mqList && mqList.length > 0 && juzInfo.pages) {
+        mqList.forEach(function(m) {
+          if (m.halaman && juzInfo.pages[m.halaman] && m.surat) {
+            suratDalamJuz[normalizeSurat(m.surat)] = true;
           }
         });
-        
-        var completedHal = Object.keys(pagesDone).length;
-        var filteredSrtCount = filteredSurahs.length;
-        
-        if (completedHal === 0 && filteredSrtCount > 0 && (numJuz === 30 || numJuz === 29)) {
-          var maxS = numJuz === 30 ? 37 : 11;
-          persen = Math.min(100, Math.round((filteredSrtCount / maxS) * 100));
-          tercapai = filteredSrtCount + " dari " + maxS + " Surat (" + completedHal + " / " + juzInfo.totalHal + " Hal)";
-          var sisaS = Math.max(0, maxS - filteredSrtCount);
-          sisa = sisaS > 0 ? ("Sisa " + sisaS + " surat lagi di " + juzInfo.nama) : ("Target " + juzInfo.nama + " Selesai! 🎉");
-        } else {
-          persen = Math.min(100, Math.round((completedHal / juzInfo.totalHal) * 100));
-          tercapai = completedHal + " dari " + juzInfo.totalHal + " Halaman (" + Math.round(persen) + "%)";
-          var sisaH = Math.max(0, juzInfo.totalHal - completedHal);
-          sisa = sisaH > 0 ? ("Sisa " + sisaH + " halaman lagi di " + juzInfo.nama) : ("Target " + juzInfo.nama + " Selesai! 🎉");
-        }
-        return { persen: persen, tercapai: tercapai, sisa: sisa, surat: filteredSrtCount, hal: completedHal, ayat: ayatCount };
       }
+      
+      var pagesDoneInTarget = {};
+      var filteredSurahs = [];
+
+      setoranList.forEach(function(item) {
+        var itemSuratNorm = item.surat ? normalizeSurat(item.surat) : '';
+        var isInTargetJuz = false;
+        
+        // Cek berdasarkan rentang halaman setoran
+        if (juzInfo.pages && (item.halAwal > 0 || item.halAkhir > 0)) {
+          var ha = item.halAwal || item.halAkhir;
+          var hk = item.halAkhir || item.halAwal;
+          for (var p = Math.min(ha, hk); p <= Math.max(ha, hk); p++) {
+            if (juzInfo.pages[p]) {
+              pagesDoneInTarget[p] = true;
+              isInTargetJuz = true;
+            }
+          }
+        }
+        
+        // Cek berdasarkan nama surat jika cocok dengan surat di juz target
+        if (!isInTargetJuz && itemSuratNorm && suratDalamJuz[itemSuratNorm]) {
+          isInTargetJuz = true;
+        }
+        
+        if (isInTargetJuz && item.surat && item.surat !== '-' && item.surat !== '') {
+          if (filteredSurahs.indexOf(item.surat) === -1) filteredSurahs.push(item.surat);
+        }
+      });
+      
+      var completedHalInTarget = Object.keys(pagesDoneInTarget).length;
+      var filteredSrtCount = filteredSurahs.length;
+      var targetTotalHal = juzInfo.totalHal || 20;
+
+      // Hitung halaman ekstra santri di luar target ini (misal santri sudah tuntas Juz 29 dan juga punya hafalan Juz 30 / Juz 28)
+      var totalSantriHal = halCount;
+      var extraHalDiLuarTarget = Math.max(0, totalSantriHal - completedHalInTarget);
+      var totalJuzEst = (totalSantriHal / 20).toFixed(1);
+
+      // Jika setoran tanpa nomor halaman (hanya nama surat)
+      if (completedHalInTarget === 0 && filteredSrtCount > 0 && juzInfo.type === 'single') {
+        var maxS = (juzInfo.startJuz === 30) ? 37 : ((juzInfo.startJuz === 29) ? 11 : 10);
+        persen = Math.min(100, Math.round((filteredSrtCount / maxS) * 100));
+        tercapai = filteredSrtCount + " dari " + maxS + " Surat (" + juzInfo.nama + ")";
+        if (filteredSrtCount >= maxS) {
+          sisa = "Target " + juzInfo.nama + " Tuntas 100%! 🎉" + (extraHalDiLuarTarget > 0 ? " (+ hafalan lain " + extraHalDiLuarTarget + " hal)" : " Siap lanjut target grade berikutnya 🚀");
+        } else {
+          sisa = "Sisa " + (maxS - filteredSrtCount) + " surat lagi di " + juzInfo.nama;
+        }
+      } else {
+        // Berdasarkan halaman mushaf yang tuntas
+        persen = Math.min(100, Math.round((completedHalInTarget / targetTotalHal) * 100));
+        
+        if (completedHalInTarget >= targetTotalHal) {
+          persen = 100;
+          tercapai = juzInfo.nama + " Tuntas (100%)" + (extraHalDiLuarTarget > 0 ? " • Total: " + totalSantriHal + " Hal (~" + totalJuzEst + " Juz)" : " (" + completedHalInTarget + " Hal)");
+          sisa = "Target " + juzInfo.nama + " Selesai! 🎉" + (extraHalDiLuarTarget > 0 ? " (+ ada " + extraHalDiLuarTarget + " hal di luar target). Siap perbarui target grade! 🚀" : " Siap lanjut target grade berikutnya 🚀");
+        } else {
+          var sisaH = Math.max(0, targetTotalHal - completedHalInTarget);
+          tercapai = completedHalInTarget + " dari " + targetTotalHal + " Hal (" + persen + "%)" + (extraHalDiLuarTarget > 0 ? " • Total: " + totalSantriHal + " Hal" : "");
+          sisa = "Sisa " + sisaH + " halaman lagi di " + juzInfo.nama + (extraHalDiLuarTarget > 0 ? " (+ sudah ada " + extraHalDiLuarTarget + " hal di juz lain)" : "");
+        }
+      }
+
+      return { 
+        persen: persen, 
+        tercapai: tercapai, 
+        sisa: sisa, 
+        surat: filteredSrtCount || srtCount, 
+        hal: completedHalInTarget || totalSantriHal, 
+        totalSantriHal: totalSantriHal,
+        ayat: ayatCount 
+      };
     }
+
     var maxHal = 600;
     persen = Math.min(100, Math.round((halCount / maxHal) * 100));
     tercapai = halCount + " dari " + maxHal + " Halaman (" + srtCount + " Surat)";
@@ -358,9 +574,26 @@ function getProgressSantriSingle(nama, targetStr) {
 }
 
 function getListSurat() {
-  const s = getSheet('Data_Surat');
-  if(s.getLastRow() < 2) return [];
-  return s.getRange(2, 1, s.getLastRow()-1, 1).getValues().map(x=>x[0]).filter(n=>n);
+  try {
+    const s = getSheet('Data_Surat');
+    // Jika sheet Data_Surat kosong atau belum memuat lengkap 114 surat, sinkronkan otomatis
+    if (s.getLastRow() < 115) {
+      s.clearContents();
+      s.getRange(1, 1).setValue("Nama Surat");
+      var rows = DAFTAR_114_SURAT.map(function(srt, idx) {
+        return [(idx + 1) + ". " + srt];
+      });
+      s.getRange(2, 1, rows.length, 1).setValues(rows);
+      return rows.map(function(r) { return r[0]; });
+    }
+    var vals = s.getRange(2, 1, s.getLastRow()-1, 1).getValues().map(x => String(x[0]).trim()).filter(n => n);
+    if (vals.length < 114) {
+      return DAFTAR_114_SURAT.map(function(srt, idx) { return (idx + 1) + ". " + srt; });
+    }
+    return vals;
+  } catch(e) {
+    return DAFTAR_114_SURAT.map(function(srt, idx) { return (idx + 1) + ". " + srt; });
+  }
 }
 
 function getListMusyrif() {
@@ -539,15 +772,24 @@ function getRiwayat(role, user, tglFilter, page, limit, searchQuery) {
 
   const sheetSantri = getSheet('Data_Santri');
   let mapKelas = {}; 
+  let mapSantriMusyrif = {};
   if (sheetSantri.getLastRow() >= 2) {
-    let dataSantri = sheetSantri.getRange(2, 1, sheetSantri.getLastRow()-1, 2).getValues();
-    dataSantri.forEach(r => { mapKelas[r[0]] = r[1]; });
+    let dataSantri = sheetSantri.getRange(2, 1, sheetSantri.getLastRow()-1, 3).getValues();
+    dataSantri.forEach(r => { 
+      var sName = String(r[0] || '').trim();
+      if (sName) {
+        mapKelas[sName] = String(r[1] || '').trim();
+        mapSantriMusyrif[sName] = String(r[2] || '').trim();
+      }
+    });
   }
   
   // Map dengan index untuk mendapatkan row number
   let indexedData = rawData.map((r, idx) => ({ row: idx + 2, data: r }));
   
-  var userAliases = String(role).toLowerCase() !== 'admin' ? getMusyrifAliases(user) : [];
+  var roleSafety = String(role || '').toLowerCase();
+  var isAdmin = (roleSafety === 'admin');
+  var userAliases = !isAdmin ? getMusyrifAliases(user) : [];
   let filtered = indexedData.filter(item => {
     var r = item.data;
     var tglSheet = r[0]; 
@@ -563,7 +805,12 @@ function getRiwayat(role, user, tglFilter, page, limit, searchQuery) {
     if (tglFilter) matchTgl = (tglISO === tglFilter);
     
     let matchUser = true;
-    if(String(role).toLowerCase() !== 'admin') matchUser = matchUserOrMusyrif(r[12], userAliases);
+    if(!isAdmin) {
+      var sName = String(r[3] || '').trim();
+      var sMusyrif = mapSantriMusyrif[sName] || '';
+      var sPelapor = String(r[12] || '').trim();
+      matchUser = matchUserOrMusyrif(sMusyrif, userAliases) || matchUserOrMusyrif(sPelapor, userAliases);
+    }
 
     let matchSearch = true;
     if (searchQuery && searchQuery.trim() !== "") {
@@ -743,10 +990,15 @@ function getRawDataForExcel(tglAwal, tglAkhir, filterNama, filterJenis, role, us
 
   const sheetSantri = getSheet('Data_Santri');
   let mapKelas = {}; 
+  let mapMusyrif = {};
   if (sheetSantri.getLastRow() >= 2) {
-    let dataSantri = sheetSantri.getRange(2, 1, sheetSantri.getLastRow()-1, 2).getValues();
+    let dataSantri = sheetSantri.getRange(2, 1, sheetSantri.getLastRow()-1, 3).getValues();
     dataSantri.forEach(r => { 
-      if (r[0]) mapKelas[String(r[0]).trim().toUpperCase()] = String(r[1] || "-").trim(); 
+      var sn = String(r[0] || "").trim().toUpperCase();
+      if (sn) {
+        mapKelas[sn] = String(r[1] || "-").trim();
+        mapMusyrif[sn] = String(r[2] || "").trim();
+      }
     });
   }
 
@@ -758,8 +1010,9 @@ function getRawDataForExcel(tglAwal, tglAkhir, filterNama, filterJenis, role, us
   let fKelas = (!filterKelas || filterKelas === "" || filterKelas === "ALL") ? "ALL" : String(filterKelas).trim().toUpperCase();
   let fKategori = (!filterKategori || filterKategori === "" || filterKategori === "ALL") ? "ALL" : String(filterKategori).trim().toLowerCase();
   let rRole = String(role || "").trim().toLowerCase();
+  let isAdmin = (rRole === 'admin');
   let rUser = String(user || "").trim();
-  let userAliases = (rRole !== 'admin' && rRole !== '') ? getMusyrifAliases(rUser) : [];
+  let userAliases = !isAdmin ? getMusyrifAliases(rUser) : [];
 
   let filtered = rawData.filter(r => {
     var tglISO = convertToISODate(r[0]);
@@ -772,7 +1025,8 @@ function getRawDataForExcel(tglAwal, tglAkhir, filterNama, filterJenis, role, us
     
     let nameMatch = (fNama === "ALL") ? true : (rowNama === fNama);
     let jenisMatch = (fJenis === "ALL") ? true : (rowJenis === fJenis);
-    let userMatch = (rRole !== 'admin' && rRole !== '') ? matchUserOrMusyrif(rowPelapor, userAliases) : true;
+    let santriMusyrif = mapMusyrif[rowNama] || '';
+    let userMatch = isAdmin ? true : (matchUserOrMusyrif(santriMusyrif, userAliases) || matchUserOrMusyrif(rowPelapor, userAliases));
     
     let santriKelas = mapKelas[rowNama] || '-';
     let kelasMatch = (fKelas === "ALL") ? true : (santriKelas.toUpperCase() === fKelas);
@@ -810,34 +1064,39 @@ function getRawDataForExcel(tglAwal, tglAkhir, filterNama, filterJenis, role, us
   });
 }
 
-// 6. CRUD SANTRI (MODIFIED: SIMPAN PASSWORD & TARGET DI DATA_SANTRI)
-function tambahSantri(n, c, m, passWali, target){ 
+// 6. CRUD SANTRI (SIMPAN BIODATA, PASSWORD, TARGET, NO WA WALI, DAN USERNAME WALI)
+function tambahSantri(n, c, m, passWali, target, noWa, usernameWali){ 
   var sheet = getSheet('Data_Santri');
-  if(sheet.getMaxColumns() < 5) sheet.insertColumnsAfter(sheet.getMaxColumns(), 5 - sheet.getMaxColumns());
-  sheet.appendRow([n, c, m, passWali, target || '']); 
+  if(sheet.getMaxColumns() < 7) sheet.insertColumnsAfter(sheet.getMaxColumns(), 7 - sheet.getMaxColumns());
+  var cleanNoWa = noWa ? formatNomorWA(noWa) : '';
+  var cleanUserWali = usernameWali ? String(usernameWali).trim() : '';
+  sheet.appendRow([n, c, m, passWali || '', target || '', cleanNoWa, cleanUserWali]); 
   return JSON.stringify({
     status: "SUKSES",
-    message: "Santri & Password Wali Ditambahkan",
+    message: "Santri & Data Wali Berhasil Ditambahkan",
     row: sheet.getLastRow()
   }); 
 }
 
-function updateSantri(r, n, c, m, passWali, target){ 
+function updateSantri(r, n, c, m, passWali, target, noWa, usernameWali){ 
   try{ 
     var sheet = getSheet('Data_Santri');
-    if(sheet.getMaxColumns() < 5) sheet.insertColumnsAfter(sheet.getMaxColumns(), 5 - sheet.getMaxColumns());
-    if(passWali && passWali !== "") {
-        sheet.getRange(r, 1, 1, 5).setValues([[n, c, m, passWali, target || '']]);
+    if(sheet.getMaxColumns() < 7) sheet.insertColumnsAfter(sheet.getMaxColumns(), 7 - sheet.getMaxColumns());
+    var cleanNoWa = (noWa !== undefined && noWa !== null) ? formatNomorWA(noWa) : '';
+    var cleanUserWali = (usernameWali !== undefined && usernameWali !== null) ? String(usernameWali).trim() : '';
+    
+    if(passWali && String(passWali).trim() !== "") {
+        sheet.getRange(r, 1, 1, 7).setValues([[n, c, m, passWali, target || '', cleanNoWa, cleanUserWali]]);
     } else {
         sheet.getRange(r, 1, 1, 3).setValues([[n, c, m]]);
-        sheet.getRange(r, 5).setValue(target || '');
+        sheet.getRange(r, 5, 1, 3).setValues([[target || '', cleanNoWa, cleanUserWali]]);
     }
     return "SUKSES: Data Santri Diupdate"; 
   } catch(e){ return "ERROR: " + e; } 
 }
 
-function editSantri(r, n, c, m, passWali, target){
-  return updateSantri(r, n, c, m, passWali, target);
+function editSantri(r, n, c, m, passWali, target, noWa, usernameWali){
+  return updateSantri(r, n, c, m, passWali, target, noWa, usernameWali);
 }
 
 function hapusSantri(row) {
@@ -989,7 +1248,13 @@ function getSheet(name) {
       s = SpreadsheetApp.getActiveSpreadsheet().insertSheet(name); 
       if(name=='Pengaturan') s.appendRow(['Key','Value']); 
       if(name=='Laporan') s.appendRow(['Tanggal', 'Mulai', 'Selesai', 'Nama', 'Jenis', 'Surat', 'Hal Awal', 'Hal Akhir', 'Ayat Awal', 'Ayat Akhir', 'Nilai', 'Catatan', 'Musyrif']);
-      if(name=='Data_Santri') s.appendRow(['Nama Santri', 'Kelas', 'Musyrif', 'Password']); 
+      if(name=='Data_Santri') s.appendRow(['Nama Santri', 'Kelas', 'Musyrif', 'Password', 'Target', 'No WA Wali', 'Username Wali']); 
+      if(name=='Data_Surat') {
+          s.appendRow(['Nama Surat']);
+          DAFTAR_114_SURAT.forEach(function(srt, idx) {
+              s.appendRow([(idx + 1) + ". " + srt]);
+          });
+      }
       if(name=='Absensi') s.appendRow(['Tanggal', 'Waktu', 'Nama Santri', 'Status', 'Musyrif']);
       if(name=='Data_Raport') s.appendRow(["Timestamp", "ID", "Nama", "Semester", "Tahun", "Z_P", "Z_K", "Z_C", "M_P", "M_K", "M_C", "T_P", "T_K", "T_C", "Ket_Tambahan", "Grade", "Lanjut", "Sakit", "Izin", "Alpa", "Diberikan_Di", "Tanggal_Raport", "Pembimbing"]);
       if(name=='Kategori_Absensi') {
@@ -1357,10 +1622,10 @@ function loadSantriAbsensi(tanggal, waktu, user, role) {
     // 1. Get All Santri
     if (sSantri.getLastRow() < 2) return [];
     const santriData = sSantri.getRange(2, 1, sSantri.getLastRow()-1, 3).getValues();
-    let listSantri = santriData.map(r => ({ nama: r[0], kelas: r[1], musyrif: r[2], status: '', catatan: '' })).filter(x => x.nama);
+    let listSantri = santriData.map(r => ({ nama: String(r[0] || '').trim(), kelas: String(r[1] || '').trim(), musyrif: String(r[2] || '').trim(), status: '', catatan: '' })).filter(x => x.nama);
     
     var rLower = String(role || '').toLowerCase();
-    if (rLower !== 'admin' && rLower !== '') {
+    if (rLower !== 'admin') {
       var uAliases = getMusyrifAliases(user);
       listSantri = listSantri.filter(x => matchUserOrMusyrif(x.musyrif, uAliases));
     }
@@ -1494,24 +1759,31 @@ function simpanAbsensiBatch(tanggal, waktu, absensiJson, musyrif) {
 }
 
 // Get rekap absensi per santri
-// Get rekap absensi per santri
 function getRekapAbsensi(tglAwal, tglAkhir, user, role) {
   try {
     const s = getSheet('Absensi');
     if (s.getLastRow() < 2) return [];
 
+    const sheetSantri = getSheet('Data_Santri');
+    let mapSantriMusyrif = {};
+    if (sheetSantri.getLastRow() >= 2) {
+      let dataSantri = sheetSantri.getRange(2, 1, sheetSantri.getLastRow()-1, 3).getValues();
+      dataSantri.forEach(r => {
+        var sName = String(r[0] || '').trim();
+        if (sName) mapSantriMusyrif[sName] = String(r[2] || '').trim();
+      });
+    }
+
     const displayData = s.getDataRange().getValues();
     displayData.shift(); // Remove header
     const lastRow = s.getLastRow();
-    
-    // Reverse logic: we'll iterate through original array but keep track of real row
-    // Or just reverse and calculate row. Let's reverse for newest first UI.
     displayData.reverse();
 
     let filtered = [];
     const roleLower = String(role || '').toLowerCase();
+    const isAdmin = (roleLower === 'admin' || roleLower === 'pimpinan');
     const userTrim = String(user || '').trim();
-    const userAliases = (roleLower !== 'admin' && roleLower !== 'pimpinan') ? getMusyrifAliases(userTrim) : [];
+    const userAliases = !isAdmin ? getMusyrifAliases(userTrim) : [];
 
     displayData.forEach((r, i) => {
       var rawDate = r[0];
@@ -1525,7 +1797,6 @@ function getRekapAbsensi(tglAwal, tglAkhir, user, role) {
         var tglStr = String(rawDate);
         var pecah = tglStr.split('/');
         if (pecah.length === 3) {
-          // dd/MM/yyyy -> yyyy-MM-dd
           tglISO = pecah[2] + "-" + pecah[1].padStart(2, '0') + "-" + pecah[0].padStart(2, '0');
         } else if (tglStr.includes('-')) {
           tglISO = tglStr.split('T')[0];
@@ -1534,7 +1805,10 @@ function getRekapAbsensi(tglAwal, tglAkhir, user, role) {
 
       // 2. Matching logic
       let dateMatch = (tglISO >= tglAwal && tglISO <= tglAkhir);
-      let userMatch = (roleLower === 'admin' || roleLower === 'pimpinan') ? true : matchUserOrMusyrif(r[4], userAliases);
+      var sName = String(r[2] || '').trim();
+      var santriMusyrif = mapSantriMusyrif[sName] || '';
+      var pelaporMusyrif = String(r[4] || '').trim();
+      let userMatch = isAdmin ? true : (matchUserOrMusyrif(santriMusyrif, userAliases) || matchUserOrMusyrif(pelaporMusyrif, userAliases));
 
       if (dateMatch && userMatch) {
         filtered.push({
@@ -2037,9 +2311,10 @@ function getDashboardData(range, user, role) {
     // Process Laporan Records
     // Headers: [Tgl, Start, End, Nama, Jenis, Surat, HalAwal, HalAkhir, AyatAwal, AyatAkhir, Nilai, Catatan, Pelapor]
     rawLaporan.slice(1).forEach(r => {
-      const nama = String(r[3]);
-      const pelapor = String(r[12]);
-      const isMine = isAdmin ? true : (pelapor === user);
+      const nama = String(r[3] || '').trim();
+      const pelapor = String(r[12] || '').trim();
+      // Keamanan akses: Musyrif hanya mengakses santri binaannya sendiri
+      const isMine = isAdmin ? true : (mySantriNames.indexOf(nama) !== -1);
 
       if (isMine && nama) {
         let tglObj = (r[0] instanceof Date) ? r[0] : parseDate(String(r[0]));
@@ -2066,10 +2341,11 @@ function getDashboardData(range, user, role) {
     });
 
     // 4. Process Absensi
-    // Headers: [Tgl, ..., Musyrif] -> index 4 is musyrif? Based on previous code dataAbsensi[4]
+    // Headers: [Tgl, ..., Musyrif]
     const totalHadir = rawAbsensi.slice(1).filter(r => {
-      const pelapor = String(r[4]);
-      const isMine = isAdmin ? true : (pelapor === user);
+      const nama = String(r[2] || '').trim();
+      const pelapor = String(r[4] || '').trim();
+      const isMine = isAdmin ? true : (mySantriNames.indexOf(nama) !== -1);
       if (!isMine) return false;
 
       let tglObj = (r[0] instanceof Date) ? r[0] : parseDate(String(r[0]));
@@ -2200,6 +2476,8 @@ function hitungTotalAyatDariRanges(mergedRanges) {
 function normalizeSurat(str) {
   if (!str) return "";
   var s = String(str).toLowerCase().trim();
+  // Hapus nomor urut di depan nama surat (misal "1. ", "114. ")
+  s = s.replace(/^\d+[\s\.\-_:]*/, "").trim();
   // Hapus prefix umum surat
   s = s.replace(/^(?:q\.?s\.?|sura[th]?|quran sura[th]?)\s*(?:-|_|\s)*\s*/i, "").trim();
   
@@ -2211,6 +2489,16 @@ function normalizeSurat(str) {
   if (s.indexOf("ghafir") !== -1 || s.indexOf("mumin") !== -1) return "almumin";
   if (s.indexOf("fushilat") !== -1 || s.indexOf("fussilat") !== -1 || s.indexOf("ha mim") !== -1) return "fushilat";
   if (s.indexOf("imran") !== -1) return "aliimran";
+  if (s.indexOf("insan") !== -1 || s.indexOf("dahr") !== -1) return "alinsan";
+  if (s.indexOf("zalzalah") !== -1 || s.indexOf("zilzal") !== -1) return "alzalzalah";
+  if (s.indexOf("kautsar") !== -1 || s.indexOf("kausar") !== -1) return "alkautsar";
+  if (s.indexOf("jatsiyah") !== -1 || s.indexOf("jasiyah") !== -1) return "aljatsiyah";
+  if (s.indexOf("takatsur") !== -1 || s.indexOf("takasur") !== -1) return "altakatsur";
+  if (s.indexOf("syams") !== -1 || s.indexOf("shams") !== -1) return "asyams";
+  if (s.indexOf("bayyinah") !== -1 || s.indexOf("bayinah") !== -1) return "albayyinah";
+  if (s.indexOf("buruj") !== -1 || s.indexOf("burooj") !== -1) return "alburuj";
+  if (s.indexOf("tariq") !== -1 || s.indexOf("thoriq") !== -1) return "attariq";
+  if (s.indexOf("ghasyiyah") !== -1 || s.indexOf("ghasiyah") !== -1) return "alghasyiyah";
   
   // Standardisasi transliterasi huruf
   s = s.replace(/sh/g, "sy"); 
