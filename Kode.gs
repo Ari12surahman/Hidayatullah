@@ -106,7 +106,7 @@ var DAFTAR_114_SURAT = [
   "Al-Waqi'ah", "Al-Hadid", "Al-Mujadilah", "Al-Hasyr", "Al-Mumtahanah",
   "As-Saff", "Al-Jumu'ah", "Al-Munafiqun", "At-Taghabun", "At-Talaq",
   "At-Tahrim", "Al-Mulk", "Al-Qalam", "Al-Haqqah", "Al-Ma'arij",
-  "Nuh", "Al-Jinn", "Al-Muzzammil", "Al-Muddassir", "Al-Qiyamah",
+  "Nuh", "Al-Jinn", "Al-Muzzammil", "Al-Muddatsir", "Al-Qiyamah",
   "Al-Insan", "Al-Mursalat", "An-Naba'", "An-Nazi'at", "'Abasa",
   "At-Takwir", "Al-Infitar", "Al-Muthaffifin", "Al-Insyiqaq", "Al-Buruj",
   "At-Tariq", "Al-A'la", "Al-Ghasyiyah", "Al-Fajr", "Al-Balad",
@@ -131,7 +131,7 @@ var SURAT_DALAM_JUZ = {
   ],
   29: [
     "Al-Mulk", "Al-Qalam", "Al-Haqqah", "Al-Ma'arij", "Nuh", 
-    "Al-Jinn", "Al-Muzzammil", "Al-Muddassir", "Al-Qiyamah", "Al-Insan", 
+    "Al-Jinn", "Al-Muzzammil", "Al-Muddatsir", "Al-Muddassir", "Al-Qiyamah", "Al-Insan", 
     "Al-Mursalat"
   ],
   28: [
@@ -2482,6 +2482,10 @@ function normalizeSurat(str) {
   s = s.replace(/^(?:q\.?s\.?|sura[th]?|quran sura[th]?)\s*(?:-|_|\s)*\s*/i, "").trim();
   
   // Variasi khusus yang sering berbeda
+  if (s.indexOf("mudas") !== -1 || s.indexOf("muddas") !== -1 || s.indexOf("mudat") !== -1 || s.indexOf("muddat") !== -1 || s.indexOf("mudath") !== -1 || s.indexOf("muddath") !== -1) return "almuddatsir";
+  if (s.indexOf("muzam") !== -1 || s.indexOf("muzzam") !== -1) return "almuzzammil";
+  if (s.indexOf("muthaf") !== -1 || s.indexOf("mutaf") !== -1 || s.indexOf("mutaffif") !== -1) return "almuthaffifin";
+  if (s.indexOf("mujadil") !== -1 || s.indexOf("mujadal") !== -1) return "almujadilah";
   if (s.indexOf("lahab") !== -1 || s.indexOf("masad") !== -1) return "almasad";
   if (s.indexOf("inshirah") !== -1 || s.indexOf("insyirah") !== -1 || s.indexOf("syarh") !== -1 || s.indexOf("alam nas") !== -1) return "alinsyirah";
   if (s.indexOf("isra") !== -1 || s.indexOf("bani israil") !== -1) return "alisra";

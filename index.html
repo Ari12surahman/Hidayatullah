@@ -3361,7 +3361,7 @@
             "56. Al-Waqi'ah", "57. Al-Hadid", "58. Al-Mujadilah", "59. Al-Hasyr", "60. Al-Mumtahanah",
             "61. As-Saff", "62. Al-Jumu'ah", "63. Al-Munafiqun", "64. At-Taghabun", "65. At-Talaq",
             "66. At-Tahrim", "67. Al-Mulk", "68. Al-Qalam", "69. Al-Haqqah", "70. Al-Ma'arij",
-            "71. Nuh", "72. Al-Jinn", "73. Al-Muzzammil", "74. Al-Muddassir", "75. Al-Qiyamah",
+            "71. Nuh", "72. Al-Jinn", "73. Al-Muzzammil", "74. Al-Muddatsir", "75. Al-Qiyamah",
             "76. Al-Insan", "77. Al-Mursalat", "78. An-Naba'", "79. An-Nazi'at", "80. 'Abasa",
             "81. At-Takwir", "82. Al-Infitar", "83. Al-Muthaffifin", "84. Al-Insyiqaq", "85. Al-Buruj",
             "86. At-Tariq", "87. Al-A'la", "88. Al-Ghasyiyah", "89. Al-Fajr", "90. Al-Balad",
@@ -3371,6 +3371,27 @@
             "106. Quraisy", "107. Al-Ma'un", "108. Al-Kautsar", "109. Al-Kafirun", "110. An-Nasr",
             "111. Al-Lahab", "112. Al-Ikhlas", "113. Al-Falaq", "114. An-Nas"
         ];
+        var SURAT_DALAM_JUZ = {
+            30: [
+                "An-Naba'", "An-Nazi'at", "'Abasa", "At-Takwir", "Al-Infitar", 
+                "Al-Muthaffifin", "Al-Insyiqaq", "Al-Buruj", "At-Tariq", "Al-A'la", 
+                "Al-Ghasyiyah", "Al-Fajr", "Al-Balad", "Asy-Syams", "Al-Lail", 
+                "Ad-Duha", "Asy-Syarh", "At-Tin", "Al-'Alaq", "Al-Qadr", 
+                "Al-Bayyinah", "Az-Zalzalah", "Al-'Adiyat", "Al-Qari'ah", "At-Takasur", 
+                "Al-'Asr", "Al-Humazah", "Al-Fil", "Quraisy", "Al-Ma'un", 
+                "Al-Kautsar", "Al-Kafirun", "An-Nasr", "Al-Lahab", "Al-Ikhlas", 
+                "Al-Falaq", "An-Nas"
+            ],
+            29: [
+                "Al-Mulk", "Al-Qalam", "Al-Haqqah", "Al-Ma'arij", "Nuh", 
+                "Al-Jinn", "Al-Muzzammil", "Al-Muddatsir", "Al-Muddassir", "Al-Qiyamah", "Al-Insan", 
+                "Al-Mursalat"
+            ],
+            28: [
+                "Al-Mujadilah", "Al-Hasyr", "Al-Mumtahanah", "As-Saff", "Al-Jumu'ah", 
+                "Al-Munafiqun", "At-Taghabun", "At-Talaq", "At-Tahrim"
+            ]
+        };
         var globDaftarSurat = DAFTAR_114_SURAT.slice();
         var globMasterKelas = [];
         var globMasterQuran = [];
@@ -3608,6 +3629,10 @@
             s = s.replace(/^(?:q\.?s\.?|sura[th]?|quran sura[th]?)\s*(?:-|_|\s)*\s*/i, "").trim();
             
             // Variasi khusus yang sering berbeda ejaannya
+            if (s.indexOf("mudas") !== -1 || s.indexOf("muddas") !== -1 || s.indexOf("mudat") !== -1 || s.indexOf("muddat") !== -1 || s.indexOf("mudath") !== -1 || s.indexOf("muddath") !== -1) return "almuddatsir";
+            if (s.indexOf("muzam") !== -1 || s.indexOf("muzzam") !== -1) return "almuzzammil";
+            if (s.indexOf("muthaf") !== -1 || s.indexOf("mutaf") !== -1 || s.indexOf("mutaffif") !== -1) return "almuthaffifin";
+            if (s.indexOf("mujadil") !== -1 || s.indexOf("mujadal") !== -1) return "almujadilah";
             if (s.indexOf("lahab") !== -1 || s.indexOf("masad") !== -1) return "almasad";
             if (s.indexOf("inshirah") !== -1 || s.indexOf("insyirah") !== -1 || s.indexOf("syarh") !== -1 || s.indexOf("alam nas") !== -1) return "alinsyirah";
             if (s.indexOf("isra") !== -1 || s.indexOf("bani israil") !== -1) return "alisra";
@@ -5045,31 +5070,46 @@
                 var mJ = tTrim.match(/juz\s*(\d+)(?:\s*s\/d\s*|\s*-\s*)?(\d+)?/i) || tTrim.match(/juz:(\d+)/i);
                 var mS = tTrim.match(/surat:([^|]+)\|([^\s|]+)/i) || tTrim.match(/surah:([^|]+)\|([^\s|]+)/i);
                 
-                if (mJ && mJ[1] && globMasterQuran && globMasterQuran.length > 0) {
+                if (mJ && mJ[1]) {
                     var startJ = parseInt(mJ[1]);
                     var endJ = mJ[2] ? parseInt(mJ[2]) : startJ;
                     targetLabel = (startJ === endJ) ? ("Juz " + startJ) : ("Juz " + startJ + " - " + endJ);
                     
-                    var minHal = 9999, maxHal = 0;
+                    // 1. Ambil surat target dari pemetaan SURAT_DALAM_JUZ bawaan (PASTI LENGKAP & SELALU TERSEDIA)
                     for (var j = Math.min(startJ, endJ); j <= Math.max(startJ, endJ); j++) {
-                        var jR = getJuzRangeClient(j);
-                        if (jR) {
-                            if (jR.start < minHal) minHal = jR.start;
-                            if (jR.end > maxHal) maxHal = jR.end;
+                        if (typeof SURAT_DALAM_JUZ !== 'undefined' && SURAT_DALAM_JUZ[j]) {
+                            SURAT_DALAM_JUZ[j].forEach(function(namaS) {
+                                var matched = surahList.find(function(ds) { return isSuratMatch(ds, namaS); });
+                                if (matched && targetSurahs.indexOf(matched) === -1) {
+                                    targetSurahs.push(matched);
+                                }
+                            });
                         }
                     }
-                    
-                    if (minHal <= maxHal) {
-                        globMasterQuran.forEach(function(m) {
-                            if (m.halaman >= minHal && m.halaman <= maxHal && m.surat) {
-                                var matchedName = surahList.find(function(ds) {
-                                    return isSuratMatch(ds, m.surat);
-                                });
-                                if (matchedName && targetSurahs.indexOf(matchedName) === -1) {
-                                    targetSurahs.push(matchedName);
-                                }
+
+                    // 2. Jika ada Master_Quran, lengkapi jika ada surat di rentang halaman tersebut
+                    if (globMasterQuran && globMasterQuran.length > 0) {
+                        var minHal = 9999, maxHal = 0;
+                        for (var j = Math.min(startJ, endJ); j <= Math.max(startJ, endJ); j++) {
+                            var jR = getJuzRangeClient(j);
+                            if (jR) {
+                                if (jR.start < minHal) minHal = jR.start;
+                                if (jR.end > maxHal) maxHal = jR.end;
                             }
-                        });
+                        }
+                        
+                        if (minHal <= maxHal) {
+                            globMasterQuran.forEach(function(m) {
+                                if (m.halaman >= minHal && m.halaman <= maxHal && m.surat) {
+                                    var matchedName = surahList.find(function(ds) {
+                                        return isSuratMatch(ds, m.surat);
+                                    });
+                                    if (matchedName && targetSurahs.indexOf(matchedName) === -1) {
+                                        targetSurahs.push(matchedName);
+                                    }
+                                }
+                            });
+                        }
                     }
                 } else if (mS && mS[1] && mS[2]) {
                     targetLabel = mS[1] + " s/d " + mS[2];

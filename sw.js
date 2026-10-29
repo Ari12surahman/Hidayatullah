@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mutabaah-admin-cache-v3';
+const CACHE_NAME = 'mutabaah-admin-cache-v4';
 
 self.addEventListener('install', function(e) {
     self.skipWaiting();
